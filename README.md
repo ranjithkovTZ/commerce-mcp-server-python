@@ -85,3 +85,26 @@ fastmcp dev src/server.py
 3. This opens the MCP Inspector in your browser.
 
 4. Browse through the tools and run them.
+
+### MCP Server on BTP
+
+1. Login to the BTP subaccount using `cf login`
+
+2. Build application and deploy to BTP
+```bash
+mbt build && cf deploy mta_archives/commerce-mcp-server_1.0.0.mtar
+```
+
+3. The MBT build will create the required resources and deploy the MCP server in the subaccount dev space.
+
+4. Run the below MCP client which will list all the tools of the MCP
+```bash
+sudo python scripts/check_remote_mcp.py https://<host>.cfapps.us10.hana.ondemand.com/mcp
+```
+
+5. You will receive the list of tools
+```bash
+Connected.
+Tools: ['mcp_ping']
+mcp_ping: {'status': 'success', 'message': 'MCP service is reachable.'}
+```
