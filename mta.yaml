@@ -1,0 +1,31 @@
+_schema-version: "3.3.0"
+ID: commerce-mcp-server
+version: 1.0.0
+description: MCP server for CAP commerce OData APIs
+
+parameters:
+  enable-parallel-deployments: true
+
+modules:
+  - name: commerce-mcp-server
+    type: python
+    path: .
+    parameters:
+      buildpack: python_buildpack
+      command: python3 ./src/server.py
+      memory: 512M
+      disk-quota: 1G
+      instances: 1
+      random-route: true
+      health-check-type: port
+    properties:
+      ENVIRONMENT: production
+    requires:
+      - name: mcp-destination-service
+
+resources:
+  - name: mcp-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
