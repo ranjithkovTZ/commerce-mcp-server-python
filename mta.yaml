@@ -22,6 +22,7 @@ modules:
       ENVIRONMENT: production
     requires:
       - name: mcp-destination-service
+      - name: mcp-xsuaa-service
 
 resources:
   - name: mcp-destination-service
@@ -29,3 +30,13 @@ resources:
     parameters:
       service: destination
       service-plan: lite
+
+  - name: mcp-xsuaa-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: commerce-mcp-server-${space}
+        tenant-mode: dedicated
