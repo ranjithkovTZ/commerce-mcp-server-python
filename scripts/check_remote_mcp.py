@@ -26,9 +26,7 @@ async def main() -> int:
 
     if not url:
         print("Usage:")
-        print("  MCP_URL=https://<app-route>/mcp python3 scripts/check_remote_mcp.py")
-        print("  MCP_URL=https://<app-route>/mcp MCP_TOKEN=<access_token> python3 scripts/check_remote_mcp.py")
-        print("  python3 scripts/check_remote_mcp.py https://<app-route>/mcp")
+        print("  Add MCP_URL and optionally MCP_TOKEN to your environment, then run again.")
         return 2
 
     token = os.getenv("MCP_TOKEN")

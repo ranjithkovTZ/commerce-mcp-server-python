@@ -27,6 +27,17 @@ class XSUAAAuthMiddleware:
         self.scope = os.getenv("XSUAA_SCOPE", default_scope)
 
     async def __call__(self, scope, receive, send):
+        """Handle incoming requests and perform XSUAA authentication.
+           This is a bare minimum to just check the authentication and scope.
+
+        Args:
+            scope (dict): The ASGI scope dictionary.
+            receive (Callable): The ASGI receive callable.
+            send (Callable): The ASGI send callable.
+
+        Returns:
+            None
+        """
         if scope.get("type") != "http":
             return await self.app(scope, receive, send)
 
@@ -45,7 +56,6 @@ class XSUAAAuthMiddleware:
 
         access_token = headers.get("authorization", "")[7:]
 
-        # Debug print: decode without signature verification (exactly as snippet)
         print(jwt.decode(access_token, options={"verify_signature": False}))
 
         security_context = xssec.create_security_context(access_token, self.uaa_service)

@@ -31,8 +31,6 @@ def mcp_ping() -> dict:
 
 
 if __name__ == "__main__":
-    # Cloud Foundry sets $PORT; in that case run the MCP server over HTTP.
-    # Locally (no $PORT), default to STDIO to work with `fastmcp dev` and MCP Inspector.
     if PORT:
         from starlette.middleware import Middleware
         from xsuaa_sec import XSUAAAuthMiddleware
