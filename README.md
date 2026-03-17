@@ -108,3 +108,23 @@ Connected.
 Tools: ['mcp_ping']
 mcp_ping: {'status': 'success', 'message': 'MCP service is reachable.'}
 ```
+
+### VCAP SERVICES
+
+1. Get the vcap services
+
+```bash
+cf env commerce-mcp-server
+```
+
+2. Create `vcap.json` at the root of your folder. Copy the full JSON under VCAP_SERVICES and save it as vcap.json.
+
+3. Set env variables
+```bash
+export VCAP_SERVICES="$(cat vcap.json)"
+```
+
+4. Check if the VCAP_SERVICES are loaded using below command
+```bash
+echo $VCAP_SERVICES
+```
