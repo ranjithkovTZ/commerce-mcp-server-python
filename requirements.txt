@@ -7,3 +7,8 @@ httpx>=0.27,<1
 # If you deploy the MCP server over HTTP (recommended for Cloud Foundry),
 # you'll typically run it behind an ASGI server.
 uvicorn[standard]>=0.27,<1
+
+# XSUAA security (minimal)
+cfenv>=0.5,<1
+sap-xssec>=3,<4
+PyJWT>=2.8,<3
