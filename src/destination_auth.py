@@ -26,6 +26,14 @@ class DestinationServiceTokenProvider:
         self._creds = credentials
 
     def get_access_token(self) -> str:
+        """Get access token
+
+        Raises:
+            RuntimeError: If the token request fails or the response is invalid.
+
+        Returns:
+            str: The access token.
+        """
         token_url = self._creds.token_service_url.rstrip("/")
         if not token_url.endswith(self.TOKEN_PATH):
             token_url += self.TOKEN_PATH
@@ -35,7 +43,7 @@ class DestinationServiceTokenProvider:
         ).decode("utf-8")
 
         headers = {
-            "Authorization": f"Basic {basic}",
+            "Authorization": f"Bearer {basic}",
             "Content-Type": "application/x-www-form-urlencoded",
         }
         data = {"grant_type": "client_credentials"}
