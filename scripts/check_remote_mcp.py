@@ -51,8 +51,6 @@ async def main() -> int:
                 tool_to_call = preferred_tool
             elif "mcp_ping" in names:
                 tool_to_call = "mcp_ping"
-            elif "cap_ping" in names:
-                tool_to_call = "cap_ping"
 
             if tool_to_call:
                 result = await client.call_tool(tool_to_call, {})

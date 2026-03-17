@@ -97,9 +97,9 @@ mbt build && cf deploy mta_archives/commerce-mcp-server_1.0.0.mtar
 
 3. The MBT build will create the required resources and deploy the MCP server in the subaccount dev space.
 
-4. Run the below MCP client which will list all the tools of the MCP
+4. Run the below MCP client which will list all the tools of the MCP. Ensure you have your .env set up properly as per the `.env-template`
 ```bash
-sudo python scripts/check_remote_mcp.py https://<host>.cfapps.us10.hana.ondemand.com/mcp
+sudo python scripts/check_remote_mcp.py
 ```
 
 5. You will receive the list of tools
