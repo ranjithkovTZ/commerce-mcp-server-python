@@ -135,17 +135,31 @@ echo $VCAP_SERVICES
 
 2. In Terminal 1 (debug console/terminal), verify the server is running and the MCP endpoint is available: `http://localhost:8080/mcp`
 
-3. Open second terminal and load `.env`
+3. Open second terminal and load the xsuaa service credentials (You will get it from subaccount xsuaa service instance)
 ```bash
-export MCP_URL=http://0.0.0.0:8080/mcp
-export MCP_TOKEN=ejy......
+export MCP_URL=https://<host>/mcp
+export MCP_XSUAA_AUTH_URL=https://<subaccount>.authentication.us10.hana.ondemand.com/oauth/token
+export MCP_XSUAA_CLIENT_ID=<clientID>
+export MCP_XSUAA_CLIENT_SECRET=<clientSecret>
 ```
 
-4. Initialize and capture SID
+4. Get `MCP_XSUAA_TOKEN` (XSUAA client credentials)
+
+```bash
+export MCP_XSUAA_TOKEN=$(
+  curl -sS -X POST "$MCP_XSUAA_AUTH_URL" \
+    -u "$MCP_XSUAA_CLIENT_ID:$MCP_XSUAA_CLIENT_SECRET" \
+    -H "Accept: application/json" \
+    -d "grant_type=client_credentials" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])'
+)
 ```
+
+5. Initialize and capture SID
+```bash
 SID=$(
   curl -i -sS -X POST "$MCP_URL" \
-    -H "Authorization: Bearer $MCP_TOKEN" \
+    -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
     -H "Accept: application/json, text/event-stream" \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0.1.0"}}}' \
@@ -154,42 +168,42 @@ SID=$(
 echo "SID=[$SID]"
 ```
 
-5. If SID prints, run the below command
+6. If SID prints, run the below command
 ```bash
 curl -sS -X POST "$MCP_URL" \
-  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SID" \
   -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
 ```
 
-6. List tools
+7. List tools
 ```bash
 curl -sS -X POST "$MCP_URL" \
-  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SID" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 ```
 
-7. Set debug point in the `mcp_ping` tool and run the below command
+8. Set debug point in the `mcp_ping` tool and run the below command
 ```bash
 curl -sS -X POST "$MCP_URL" \
-  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SID" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"mcp_ping","arguments":{}}}'
 ```
 
-8. Call `get_products` tool 
+9. Call `get_products` tool 
 ```bash
 DEST="COMMERCE_API_DESTINATION"
 
 curl -sS -X POST "$MCP_URL" \
-  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SID" \
