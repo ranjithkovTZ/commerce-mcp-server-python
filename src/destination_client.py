@@ -73,8 +73,8 @@ class DestinationServiceClient:
                 if isinstance(token_type, str) and isinstance(token_value, str) and token_value:
                     auth_header = f"{token_type} {token_value}" if token_type else token_value
 
-        username = dest_cfg.get("User") if isinstance(dest_cfg.get("ClientId"), str) else None
-        password = dest_cfg.get("Password") if isinstance(dest_cfg.get("ClientSecret"), str) else None
+        username = dest_cfg.get("clientId")
+        password = dest_cfg.get("clientSecret")
 
         return DestinationDetails(
             name=destination_name,
