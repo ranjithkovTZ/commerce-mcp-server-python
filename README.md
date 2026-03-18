@@ -128,3 +128,70 @@ export VCAP_SERVICES="$(cat vcap.json)"
 ```bash
 echo $VCAP_SERVICES
 ```
+
+### How to debug the code on local
+
+1. Start the Debug launch configuration.
+
+2. In Terminal 1 (debug console/terminal), verify the server is running and the MCP endpoint is available: `http://localhost:8080/mcp`
+
+3. Open second terminal and load `.env`
+```bash
+export MCP_URL=http://0.0.0.0:8080/mcp
+export MCP_TOKEN=ejy......
+```
+
+4. Initialize and capture SID
+```
+SID=$(
+  curl -i -sS -X POST "$MCP_URL" \
+    -H "Authorization: Bearer $MCP_TOKEN" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0.1.0"}}}' \
+  | awk -F': ' 'tolower($1)=="mcp-session-id"{print $2}' | tr -d '\r'
+)
+echo "SID=[$SID]"
+```
+
+5. If SID prints, run the below command
+```bash
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+```
+
+6. List tools
+```bash
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+7. Set debug point in the `mcp_ping` tool and run the below command
+```bash
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"mcp_ping","arguments":{}}}'
+```
+
+8. Call `get_products` tool 
+```bash
+DEST="COMMERCE_API_DESTINATION"
+
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"get_products\",\"arguments\":{\"destination_name\":\"$DEST\"}}}"
+```

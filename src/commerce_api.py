@@ -16,7 +16,7 @@ def _join_url(base: str, path: str) -> str:
 class CommerceApiConfig:
     """API paths
     """
-    products_path: str = "/Products"
+    products_path: str = "/odata/v4/catalog/Products"
 
 
 class CommerceApi:
@@ -24,7 +24,7 @@ class CommerceApi:
     """
     def __init__(self, config: CommerceApiConfig | None = None):
         self._config = config or CommerceApiConfig(
-            products_path=os.getenv("COMMERCE_PRODUCTS_PATH", "/Products")
+            products_path=os.getenv("COMMERCE_PRODUCTS_PATH", "/odata/v4/catalog/Products")
         )
 
     def get_products(self, destination: DestinationDetails) -> dict:
@@ -40,7 +40,7 @@ class CommerceApi:
 
         headers: dict[str, str] = {"Accept": "application/json"}
         if destination.auth_header:
-            headers["Authorization"] = f"Bearer {destination.auth_header}"
+            headers["Authorization"] = f"{destination.auth_header}"
 
         timeout = httpx.Timeout(30.0)
         resp = httpx.get(url, headers=headers, timeout=timeout)

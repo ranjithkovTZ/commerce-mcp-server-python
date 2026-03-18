@@ -1,6 +1,7 @@
 """This is the entry point for the MCP server"""
 import os
 
+from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 from fastmcp import FastMCP
@@ -13,6 +14,13 @@ from destination_client import DestinationServiceClient
 
 load_dotenv()
 PORT = os.getenv("PORT")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+
+if ENVIRONMENT == "local":
+    p = Path(os.getenv("VCAP_SERVICES_FILE", "vcap.json"))
+    if p.exists():
+        os.environ["VCAP_SERVICES"] = p.read_text(encoding="utf-8")
+
 
 mcp = FastMCP("commerce-mcp-server")
 

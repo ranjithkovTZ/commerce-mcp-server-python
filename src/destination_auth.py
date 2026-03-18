@@ -11,6 +11,7 @@ import httpx
 
 @dataclass(frozen=True)
 class DestinationServiceCredentials:
+    """Credentials for accessing the Destination Service."""
     uri: str
     clientid: str
     clientsecret: str
@@ -43,8 +44,11 @@ class DestinationServiceTokenProvider:
         ).decode("utf-8")
 
         headers = {
-            "Authorization": f"Bearer {basic}",
+            # OAuth 2.0 client_credentials uses HTTP Basic auth with
+            # base64(client_id:client_secret)
+            "Authorization": f"Basic {basic}",
             "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
         }
         data = {"grant_type": "client_credentials"}
 
