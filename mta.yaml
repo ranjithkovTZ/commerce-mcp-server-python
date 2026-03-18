@@ -10,6 +10,17 @@ modules:
   - name: commerce-mcp-server
     type: python
     path: .
+    build-parameters:
+      ignore:
+        - mta_archives/
+        - .git/
+        - .venv/
+        - .vscode/
+        - __pycache__/
+        - "**/__pycache__/"
+        - "**/*.pyc"
+        - .env
+        - vcap.json
     parameters:
       buildpack: python_buildpack
       command: python3 ./src/server.py
