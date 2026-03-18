@@ -86,7 +86,7 @@ fastmcp dev src/server.py
 
 4. Browse through the tools and run them.
 
-### MCP Server on BTP
+### MCP Server on BTP and Quick Validation
 
 1. Login to the BTP subaccount using `cf login`
 
