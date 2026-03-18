@@ -1,3 +1,11 @@
+"""XSUAA Auth Middleware
+Raises:
+    RuntimeError: Raised if the XSUAA service is not found in the environment or 
+    if there are issues with token validation.
+Returns:
+    Self: An instance of the XSUAAAuthMiddleware class that can be used 
+    as ASGI middleware in a FastMCP application.
+"""
 from __future__ import annotations
 
 import os
