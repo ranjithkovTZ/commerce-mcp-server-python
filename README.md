@@ -137,7 +137,7 @@ echo $VCAP_SERVICES
 
 3. Open second terminal and load the xsuaa service credentials (You will get it from subaccount xsuaa service instance)
 ```bash
-export MCP_URL=https://<host>/mcp
+export MCP_URL=http://0.0.0.0:8080/mcp
 export MCP_XSUAA_AUTH_URL=https://<subaccount>.authentication.us10.hana.ondemand.com/oauth/token
 export MCP_XSUAA_CLIENT_ID=<clientID>
 export MCP_XSUAA_CLIENT_SECRET=<clientSecret>
