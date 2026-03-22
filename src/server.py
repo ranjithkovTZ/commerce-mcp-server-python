@@ -50,14 +50,17 @@ def mcp_ping() -> dict:
 
 
 @mcp.tool
-def get_products(destination_name: str | None = None) -> dict:
-    """Fetch products from the Commerce API via a BTP Destination.
+def get_products() -> dict:
+    """Fetch products from the Commerce API.
 
-    Args:
-        destination_name: Name of the Destination in the subaccount.
+    Returns:
+        dict: List of products or error message.
     """
 
-    destination_name = destination_name or os.getenv("DESTINATION_NAME")
+    destination_name = (
+        os.getenv("DESTINATION_NAME")
+        or "COMMERCE_API_DESTINATION"
+    )
     if not destination_name:
         return {
             "status": "error",
@@ -71,6 +74,88 @@ def get_products(destination_name: str | None = None) -> dict:
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
         return {"status": "error", "message": str(e)}
 
+@mcp.tool
+def get_categories() -> dict:
+    """Fetch categories from the Commerce API.
+
+    Returns:
+        dict: List of categories or error message.
+    """
+
+    destination_name = (
+        os.getenv("DESTINATION_NAME")
+        or "COMMERCE_API_DESTINATION"
+    )
+    if not destination_name:
+        return {
+            "status": "error",
+            "message": "Missing destination name. Provide destination_name or set DESTINATION_NAME.",
+        }
+
+    try:
+        destination = _destination_client.get_destination(destination_name)
+        data = _commerce_api.get_categories(destination)
+        return {"status": "success", "destination": destination_name, "data": data}
+    except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
+        return {"status": "error", "message": str(e)}
+    
+
+@mcp.tool
+def get_products_by_category(category_id: str) -> dict:
+    """Fetch products by category from the Commerce API.
+
+    Args:
+        category_id: The ID of the category to filter products by.
+    """
+
+    destination_name = (
+        os.getenv("DESTINATION_NAME")
+        or "COMMERCE_API_DESTINATION"
+    )
+    if not destination_name:
+        return {
+            "status": "error",
+            "message": "Missing destination name. Provide destination_name or set DESTINATION_NAME.",
+        }
+
+    if not category_id:
+        return {
+            "status": "error",
+            "message": "Missing category_id. Provide category_id as an argument.",
+        }
+
+    try:
+        destination = _destination_client.get_destination(destination_name)
+        data = _commerce_api.get_products_by_category(destination, category_id)
+        return {"status": "success", "destination": destination_name, "data": data}
+    except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool
+def get_retailers() -> dict:
+    """Fetch the retailers.
+
+    Returns:
+        dict: List of retailers or error message.
+    """
+
+    destination_name = (
+        os.getenv("DESTINATION_NAME")
+        or "COMMERCE_API_DESTINATION"
+    )
+    if not destination_name:
+        return {
+            "status": "error",
+            "message": "Missing destination name. Provide destination_name or set DESTINATION_NAME.",
+        }
+
+    try:
+        destination = _destination_client.get_destination(destination_name)
+        data = _commerce_api.get_retailers(destination)
+        return {"status": "success", "destination": destination_name, "data": data}
+    except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     if PORT:

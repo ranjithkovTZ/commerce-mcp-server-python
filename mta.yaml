@@ -31,6 +31,7 @@ modules:
       health-check-type: port
     properties:
       ENVIRONMENT: production
+      DESTINATION_NAME: COMMERCE_API_DESTINATION
     requires:
       - name: mcp-destination-service
       - name: mcp-xsuaa-service

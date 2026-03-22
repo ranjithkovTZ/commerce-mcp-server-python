@@ -16,6 +16,10 @@ It supports two common ways of running:
 - **SAP BTP subaccount (Cloud Foundry)**: You have access to a BTP subaccount with a Cloud Foundry org/space and can log in using `cf login`.
 - **Commerce OData APIs available**: Commerce OData APIs are already deployed/running and reachable from where you run this MCP server (local or BTP). Create a destination for the commerce APIs with name - COMMERCE_API_DESTINATION
 
+**Destination name default:**
+
+- Default Destination name is COMMERCE_API_DESTINATION which can be updated from envrironment variables
+
 
 ### Local Set up
 
@@ -102,20 +106,6 @@ fastmcp version
 
 You are all set!
 
-### MCP server on local
-
-**Pre-requisite** - Commerce OData APIs application must be deployed on BTP with `DESTINATION - COMMERCE_API_DESTINATION`.
-
-1. Create a .env file in the project root using the env-template
-
-2. Run MCP inspector (local STDIO)
-```bash
-fastmcp dev src/server.py
-```
-
-3. This opens the MCP Inspector in your browser.
-
-4. Browse through the tools and run them.
 
 ### MCP Server on BTP and Quick Validation
 
@@ -130,7 +120,7 @@ mbt build && cf deploy mta_archives/commerce-mcp-server_1.0.0.mtar
 
 4. Run the below MCP client which will list all the tools of the MCP. Ensure you have your .env set up properly as per the `.env-template`
 ```bash
-sudo python scripts/check_remote_mcp.py
+python scripts/check_remote_mcp.py
 ```
 
 5. You will receive the list of tools
@@ -160,11 +150,26 @@ export VCAP_SERVICES="$(cat vcap.json)"
 echo $VCAP_SERVICES
 ```
 
+### MCP server on local
+
+**Pre-requisite** - Commerce OData APIs application must be deployed on BTP with `DESTINATION - COMMERCE_API_DESTINATION`.
+
+1. Create a .env file in the project root using the env-template
+
+2. Run MCP inspector (local STDIO)
+```bash
+fastmcp dev src/server.py
+```
+
+3. This opens the MCP Inspector in your browser.
+
+4. Browse through the tools and run them.
+
 ### How to debug the code on local
 
 1. Start the Debug launch configuration.
 
-2. In Terminal 1 (debug console/terminal), verify the server is running and the MCP endpoint is available: `http://localhost:8080/mcp`
+2. In Terminal 1 (debug console/terminal), verify the server is running and the MCP endpoint is available: `http://0.0.0.0:8080/mcp`
 
 3. Open second terminal and load the xsuaa service credentials (You will get it from subaccount xsuaa service instance)
 ```bash
@@ -175,6 +180,17 @@ export MCP_XSUAA_CLIENT_SECRET=<clientSecret>
 ```
 
 4. Get `MCP_XSUAA_TOKEN` (XSUAA client credentials)
+
+If you see `KeyError: 'access_token'`, the token endpoint returned an error JSON (so there is no `access_token` field). First, inspect the raw response:
+
+```bash
+curl -i -sS -X POST "$MCP_XSUAA_AUTH_URL" \
+  -u "$MCP_XSUAA_CLIENT_ID:$MCP_XSUAA_CLIENT_SECRET" \
+  -H "Accept: application/json" \
+  -d "grant_type=client_credentials"
+```
+
+Then export the token:
 
 ```bash
 export MCP_XSUAA_TOKEN=$(
@@ -231,12 +247,42 @@ curl -sS -X POST "$MCP_URL" \
 
 9. Call `get_products` tool 
 ```bash
-DEST="COMMERCE_API_DESTINATION"
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"get_products\",\"arguments\":{}}}"
+```
+
+10. Call get_categories tool
+```bash
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_categories","arguments":{}}}'
+```
+
+11. Call get_products_by_category tool
+```bash
+CATEGORY_ID="a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c3d"
 
 curl -sS -X POST "$MCP_URL" \
   -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SID" \
-  -d "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"get_products\",\"arguments\":{\"destination_name\":\"$DEST\"}}}"
+  -d "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"get_products_by_category\",\"arguments\":{\"category_id\":\"$CATEGORY_ID\"}}}"
+```
+
+12. Call get_retailers tool
+```bash
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_retailers","arguments":{}}}'
 ```
