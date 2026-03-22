@@ -14,7 +14,11 @@ It supports two common ways of running:
 ### Pre-requisites
 
 - **SAP BTP subaccount (Cloud Foundry)**: You have access to a BTP subaccount with a Cloud Foundry org/space and can log in using `cf login`.
-- **Commerce OData APIs available**: Commerce OData APIs are already deployed/running and reachable from where you run this MCP server (local or BTP). Create a destination for the commerce APIs with name - COMMERCE_API_DESTINATION
+- **Commerce OData APIs available**: 
+    1. Commerce OData APIs are already deployed/running and reachable from where you run this MCP server (local or BTP). You can either create a simple e-commerce application using standard CAP template
+     or create your own.
+    2. Create a destination for the commerce APIs with name - COMMERCE_API_DESTINATION. 
+
 
 **Destination name default:**
 
