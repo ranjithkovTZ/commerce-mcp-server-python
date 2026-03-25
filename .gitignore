@@ -4,3 +4,4 @@
 *.pyc
 /mta_archives
 vcap.json
+assets/.DS_Store
