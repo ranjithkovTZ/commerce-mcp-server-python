@@ -15,6 +15,7 @@ from destination_client import DestinationServiceClient
 load_dotenv()
 PORT = os.getenv("PORT")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+MOCK_BACKEND = os.getenv("MOCK_BACKEND", "false").lower() == "true"
 
 if ENVIRONMENT == "local":
     p = Path(os.getenv("VCAP_SERVICES_FILE", "vcap.json"))
@@ -27,8 +28,16 @@ mcp = FastMCP("commerce-mcp-server")
 _destination_client = DestinationServiceClient(
     destination_service_instance_name=os.getenv("DESTINATION_SERVICE_INSTANCE_NAME")
 )
-_commerce_api = CommerceApi()
 
+if MOCK_BACKEND:
+    from mock_commerce_api import MockCommerceApi
+    _commerce_api = MockCommerceApi()
+else:
+    _commerce_api = CommerceApi()
+
+
+def _get_destination(destination_name: str):
+    return _destination_client.get_destination(destination_name)
 
 
 @mcp.custom_route("/health", methods=["GET"], include_in_schema=False)
@@ -39,6 +48,7 @@ async def health_check(_request):
         JSONResponse: A JSON response indicating the health status.
     """
     return JSONResponse({"status": "ok"})
+
 
 @mcp.tool
 def mcp_ping() -> dict:
@@ -56,23 +66,18 @@ def get_products() -> dict:
     Returns:
         dict: List of products or error message.
     """
-
-    destination_name = (
-        os.getenv("DESTINATION_NAME")
-        or "COMMERCE_API_DESTINATION"
-    )
-    if not destination_name:
-        return {
-            "status": "error",
-            "message": "Missing destination name. Provide destination_name or set DESTINATION_NAME.",
-        }
-
     try:
-        destination = _destination_client.get_destination(destination_name)
+        if MOCK_BACKEND:
+            data = _commerce_api.get_products()
+            return {"status": "success", "destination": "mock", "data": data}
+
+        destination_name = os.getenv("DESTINATION_NAME") or "COMMERCE_API_DESTINATION"
+        destination = _get_destination(destination_name)
         data = _commerce_api.get_products(destination)
         return {"status": "success", "destination": destination_name, "data": data}
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
         return {"status": "error", "message": str(e)}
+
 
 @mcp.tool
 def get_categories() -> dict:
@@ -81,24 +86,18 @@ def get_categories() -> dict:
     Returns:
         dict: List of categories or error message.
     """
-
-    destination_name = (
-        os.getenv("DESTINATION_NAME")
-        or "COMMERCE_API_DESTINATION"
-    )
-    if not destination_name:
-        return {
-            "status": "error",
-            "message": "Missing destination name. Provide destination_name or set DESTINATION_NAME.",
-        }
-
     try:
-        destination = _destination_client.get_destination(destination_name)
+        if MOCK_BACKEND:
+            data = _commerce_api.get_categories()
+            return {"status": "success", "destination": "mock", "data": data}
+
+        destination_name = os.getenv("DESTINATION_NAME") or "COMMERCE_API_DESTINATION"
+        destination = _get_destination(destination_name)
         data = _commerce_api.get_categories(destination)
         return {"status": "success", "destination": destination_name, "data": data}
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
         return {"status": "error", "message": str(e)}
-    
+
 
 @mcp.tool
 def get_products_by_category(category_id: str) -> dict:
@@ -107,17 +106,6 @@ def get_products_by_category(category_id: str) -> dict:
     Args:
         category_id: The ID of the category to filter products by.
     """
-
-    destination_name = (
-        os.getenv("DESTINATION_NAME")
-        or "COMMERCE_API_DESTINATION"
-    )
-    if not destination_name:
-        return {
-            "status": "error",
-            "message": "Missing destination name. Provide destination_name or set DESTINATION_NAME.",
-        }
-
     if not category_id:
         return {
             "status": "error",
@@ -125,7 +113,12 @@ def get_products_by_category(category_id: str) -> dict:
         }
 
     try:
-        destination = _destination_client.get_destination(destination_name)
+        if MOCK_BACKEND:
+            data = _commerce_api.get_products_by_category(category_id=category_id)
+            return {"status": "success", "destination": "mock", "data": data}
+
+        destination_name = os.getenv("DESTINATION_NAME") or "COMMERCE_API_DESTINATION"
+        destination = _get_destination(destination_name)
         data = _commerce_api.get_products_by_category(destination, category_id)
         return {"status": "success", "destination": destination_name, "data": data}
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
@@ -139,23 +132,18 @@ def get_retailers() -> dict:
     Returns:
         dict: List of retailers or error message.
     """
-
-    destination_name = (
-        os.getenv("DESTINATION_NAME")
-        or "COMMERCE_API_DESTINATION"
-    )
-    if not destination_name:
-        return {
-            "status": "error",
-            "message": "Missing destination name. Provide destination_name or set DESTINATION_NAME.",
-        }
-
     try:
-        destination = _destination_client.get_destination(destination_name)
+        if MOCK_BACKEND:
+            data = _commerce_api.get_retailers()
+            return {"status": "success", "destination": "mock", "data": data}
+
+        destination_name = os.getenv("DESTINATION_NAME") or "COMMERCE_API_DESTINATION"
+        destination = _get_destination(destination_name)
         data = _commerce_api.get_retailers(destination)
         return {"status": "success", "destination": destination_name, "data": data}
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
         return {"status": "error", "message": str(e)}
+
 
 if __name__ == "__main__":
     if PORT:

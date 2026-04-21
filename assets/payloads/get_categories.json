@@ -1,0 +1,38 @@
+{
+  "@odata.context": "$metadata#Categories",
+  "value": [
+    {
+      "ID": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c1d",
+      "createdAt": null,
+      "createdBy": null,
+      "desc": "All Products",
+      "imageURL": null,
+      "modifiedAt": null,
+      "modifiedBy": null,
+      "name": "root",
+      "parentCategoryID": null
+    },
+    {
+      "ID": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c2d",
+      "createdAt": null,
+      "createdBy": null,
+      "desc": "Power Tools",
+      "imageURL": null,
+      "modifiedAt": null,
+      "modifiedBy": null,
+      "name": "Power Tools",
+      "parentCategoryID": "1"
+    },
+    {
+      "ID": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c3d",
+      "createdAt": null,
+      "createdBy": null,
+      "desc": "Outdoor Tools",
+      "imageURL": null,
+      "modifiedAt": null,
+      "modifiedBy": null,
+      "name": "Outdoor Tools",
+      "parentCategoryID": "1"
+    }
+  ]
+}

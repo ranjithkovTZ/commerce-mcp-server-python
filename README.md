@@ -14,10 +14,12 @@ It supports two common ways of running:
 ### Pre-requisites
 
 - **SAP BTP subaccount (Cloud Foundry)**: You have access to a BTP subaccount with a Cloud Foundry org/space and can log in using `cf login`.
+  > Not required if running locally with `MOCK_BACKEND=true`.
 - **Commerce OData APIs available**: 
     1. Commerce OData APIs are already deployed/running and reachable from where you run this MCP server (local or BTP). You can either create a simple e-commerce application using standard CAP template
      or create your own.
     2. Create a destination for the commerce APIs with name - COMMERCE_API_DESTINATION. 
+  > Not required if running locally with `MOCK_BACKEND=true`.
 
 
 **Destination name default:**
@@ -156,18 +158,48 @@ echo $VCAP_SERVICES
 
 ### MCP server on local
 
-**Pre-requisite** - Commerce OData APIs application must be deployed on BTP with `DESTINATION - COMMERCE_API_DESTINATION`.
+There are two ways to run the MCP server locally:
 
-1. Create a .env file in the project root using the env-template
+#### Option 1: Mock Backend (no BTP required)
+
+No SAP BTP account or deployed Commerce APIs needed. The server serves sample payloads from `assets/payloads/`.
+
+1. Create a `.env` file in the project root using the `.env-template` and set:
+
+```
+ENVIRONMENT=local
+MOCK_BACKEND=true
+```
 
 2. Run MCP inspector (local STDIO)
 ```bash
 fastmcp dev src/server.py
 ```
 
-3. This opens the MCP Inspector in your browser.
+3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`) return mock data immediately.
 
-4. Browse through the tools and run them.
+#### Option 2: Live Backend (BTP required)
+
+**Pre-requisite** - Commerce OData APIs application must be deployed on BTP with `DESTINATION - COMMERCE_API_DESTINATION`.
+
+1. Create a `.env` file in the project root using the `.env-template` and set:
+
+```
+ENVIRONMENT=local
+MOCK_BACKEND=false
+DESTINATION_NAME=COMMERCE_API_DESTINATION
+```
+
+2. Follow the [VCAP SERVICES](#vcap-services) section to load your service credentials.
+
+3. Run MCP inspector (local STDIO)
+```bash
+fastmcp dev src/server.py
+```
+
+4. This opens the MCP Inspector in your browser.
+
+5. Browse through the tools and run them.
 
 ### How to debug the code on local
 
