@@ -13,6 +13,7 @@ It supports two common ways of running:
 
 ### Pre-requisites
 
+- **Node.js (for `npx`)**: Required to run the MCP Inspector (`@modelcontextprotocol/inspector`) locally.
 - **SAP BTP subaccount (Cloud Foundry)**: You have access to a BTP subaccount with a Cloud Foundry org/space and can log in using `cf login`.
   > Not required if running locally with `MOCK_BACKEND=true`.
 - **Commerce OData APIs available**: 
@@ -31,50 +32,27 @@ It supports two common ways of running:
 
 1. Install Python 3.13 and verify
 
-Install Python 3.13.x from python.org (macOS universal installer).
+Install Python 3.13.x from python.org.
 
 Verify:
-
-```bash
-python3.13 --version
-```
 
 ```bash
 python3.13 --version
 which python3.13
 ```
 
-2. (Optional) Open new terminal and install `uv` (faster pip) and ensure correct architecture (arm64 vs x86_64)
+2. Go to VSCode and open terminal. Create and activate a virtual environment
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-3. (Optional) Add `uv` to your `PATH`
-
-The install script typically places `uv` in `~/.local/bin/uv`. Adding `~/.local/bin` to your `PATH` makes `uv` available in new terminals.
-
-If you installed `uv` via Homebrew (`brew install uv`), you can skip this step.
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-hash -r
-```
-
-4. (Optional) Verify `uv` is found
-
-```bash
-which uv
-uv --version
-file "$(which uv)"
-```
-
-5. Go to VSCode and open terminal. Create and activate a virtual environment
-
+macOS/Linux:
 ```bash
 python3.13 -m venv .venv
 source .venv/bin/activate
+```
+
+Windows (PowerShell):
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
 Verify venv is active and using expected Python:
@@ -85,30 +63,24 @@ python --version
 python -m pip --version
 ```
 
-6. Install fastMCP (`uv` optional)
-
-Using `uv`:
-
-```bash
-uv pip install --no-cache-dir "fastmcp<3"
-```
-
-Or using `pip`:
+3. Install fastMCP
 
 ```bash
 pip install "fastmcp<3"
 ```
 
-7. Install dependencies
+4. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-8. Verify version
+5. Verify version
 
 ```bash
 fastmcp version
 ```
+
+> On Windows, this command may print the version info correctly and then raise a `UnicodeEncodeError` from an emoji in an "update available" banner. That crash is cosmetic (a Windows console encoding issue in FastMCP's own update check) — if the version numbers printed above it, the install is fine.
 
 You are all set!
 
@@ -158,7 +130,30 @@ echo $VCAP_SERVICES
 
 ### MCP server on local
 
-There are two ways to run the MCP server locally:
+There are two ways to run the MCP server locally.
+
+#### Running the MCP Inspector
+
+Make sure you've completed [Local Set up](#local-set-up) first (venv created, `fastmcp` and `requirements.txt` installed) and activated your virtual environment.
+
+**Default (no `uv` required)** — run the Inspector directly via `npx` against your virtualenv's Python (requires [Node.js](https://nodejs.org/) for `npx`):
+
+macOS/Linux:
+```bash
+npx -y @modelcontextprotocol/inspector .venv/bin/python src/server.py
+```
+
+Windows (PowerShell):
+```powershell
+npx -y @modelcontextprotocol/inspector .venv\Scripts\python.exe src/server.py
+```
+
+**Alternative (only if you have `uv` installed)** — `fastmcp dev` shells out to `uv run` under the hood:
+```bash
+fastmcp dev src/server.py
+```
+
+Either command opens the same MCP Inspector UI in your browser, at a URL printed in the terminal (e.g. `http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=...`). Use that exact URL (with the token) to connect.
 
 #### Option 1: Mock Backend (no BTP required)
 
@@ -171,10 +166,7 @@ ENVIRONMENT=local
 MOCK_BACKEND=true
 ```
 
-2. Run MCP inspector (local STDIO)
-```bash
-fastmcp dev src/server.py
-```
+2. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
 3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`) return mock data immediately.
 
@@ -192,10 +184,7 @@ DESTINATION_NAME=COMMERCE_API_DESTINATION
 
 2. Follow the [VCAP SERVICES](#vcap-services) section to load your service credentials.
 
-3. Run MCP inspector (local STDIO)
-```bash
-fastmcp dev src/server.py
-```
+3. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
 4. This opens the MCP Inspector in your browser.
 
