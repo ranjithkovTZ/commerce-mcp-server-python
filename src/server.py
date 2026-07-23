@@ -25,14 +25,15 @@ if ENVIRONMENT == "local":
 
 mcp = FastMCP("commerce-mcp-server")
 
-_destination_client = DestinationServiceClient(
-    destination_service_instance_name=os.getenv("DESTINATION_SERVICE_INSTANCE_NAME")
-)
+_destination_client = None
 
 if MOCK_BACKEND:
     from mock_commerce_api import MockCommerceApi
     _commerce_api = MockCommerceApi()
 else:
+    _destination_client = DestinationServiceClient(
+        destination_service_instance_name=os.getenv("DESTINATION_SERVICE_INSTANCE_NAME")
+    )
     _commerce_api = CommerceApi()
 
 
