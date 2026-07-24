@@ -29,11 +29,23 @@ class CommerceApi:
             products_path=os.getenv("COMMERCE_PRODUCTS_PATH", "/odata/v4/catalog/Products")
         )
 
-    def get_products(self, destination: DestinationDetails) -> dict:
+    def get_products(
+        self,
+        destination: DestinationDetails,
+        *,
+        fields: str | None = None,
+        page_size: int | str | None = None,
+        lang: str | None = None,
+        curr: str | None = None,
+    ) -> dict:
         """Get Products
 
         Args:
             destination (DestinationDetails): The details of the destination.
+            fields, page_size, lang, curr: Accepted for interface parity with
+                OccCommerceApi (server.py calls this uniformly regardless of
+                backend mode) but ignored — the CAP OData service has no
+                equivalent field-selection/page-size/locale/currency concept.
 
         Returns:
             dict: The products data.
@@ -75,17 +87,36 @@ class CommerceApi:
         data = resp.json()
         return data if isinstance(data, dict) else {"value": data}
 
-    def get_products_by_category(self, destination: DestinationDetails, category_id: str) -> dict:
+    def get_products_by_category(
+        self,
+        destination: DestinationDetails,
+        category_id: str,
+        *,
+        fields: str | None = None,
+        page_size: int | str | None = None,
+        lang: str | None = None,
+        curr: str | None = None,
+    ) -> dict:
         """Get Products by Category
 
         Args:
             destination (DestinationDetails): The details of the destination.
             category_id (str): The ID of the category.
+            fields, page_size, lang, curr: Accepted for interface parity with
+                OccCommerceApi (server.py calls this uniformly regardless of
+                backend mode) but ignored — the CAP OData service has no
+                equivalent field-selection/page-size/locale/currency concept.
 
         Returns:
             dict: The products data.
         """
-        url = _join_url(destination.url, f"/odata/v4/catalog/Products?$filter=category_ID eq '{category_id}'")
+        url = _join_url(destination.url, "/odata/v4/catalog/Products")
+        # OData V4 string literals escape a single quote by doubling it. Without
+        # this, a category_id containing a quote (category_id is caller-supplied
+        # via the get_products_by_category tool) could break out of the string
+        # literal and inject arbitrary $filter predicates.
+        escaped_category_id = category_id.replace("'", "''")
+        params = {"$filter": f"category_ID eq '{escaped_category_id}'"}
 
         print(f"URL: {url}")
 
@@ -94,7 +125,7 @@ class CommerceApi:
             headers["Authorization"] = f"{destination.auth_header}"
 
         timeout = httpx.Timeout(30.0)
-        resp = httpx.get(url, headers=headers, timeout=timeout)
+        resp = httpx.get(url, params=params, headers=headers, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
         return data if isinstance(data, dict) else {"value": data}

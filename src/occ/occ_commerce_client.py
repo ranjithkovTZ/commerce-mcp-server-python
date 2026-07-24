@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from backend_mode import BackendMode
 from destination_details import DestinationDetails
 from occ.occ_commerce_auth import OccCommerceTokenProvider, load_occ_commerce_credentials
 
@@ -23,7 +24,7 @@ class OccCommerceClient:
         """
         token = self._token_provider.get_access_token()
         return DestinationDetails(
-            name=destination_name or "occ",
+            name=destination_name or BackendMode.OCC.value,
             url=self._creds.base_url,
             authentication="OAuth2ClientCredentials",
             auth_header=f"Bearer {token}",

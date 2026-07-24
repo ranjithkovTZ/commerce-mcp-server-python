@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 
-import jwt
 from cfenv import AppEnv
 from sap import xssec
 from starlette.responses import JSONResponse
@@ -58,13 +57,12 @@ class XSUAAAuthMiddleware:
             return await self.app(scope, receive, send)
 
         headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
-        if "authorization" not in headers:
+        auth_header = headers.get("authorization", "")
+        if not auth_header.lower().startswith("bearer "):
             res = JSONResponse({"error": "missing_authorization"}, status_code=403)
             return await res(scope, receive, send)
 
-        access_token = headers.get("authorization", "")[7:]
-
-        print(jwt.decode(access_token, options={"verify_signature": False}))
+        access_token = auth_header[len("Bearer "):]
 
         security_context = xssec.create_security_context(access_token, self.uaa_service)
         is_authorized = security_context.check_scope(self.scope)

@@ -5,7 +5,13 @@ from dataclasses import dataclass
 
 import httpx
 
+from backend_mode import BackendMode
 from destination_details import DestinationDetails
+
+_NOT_SUPPORTED_MESSAGE = (
+    "{method} is not supported in OCC mode. "
+    f"Switch BACKEND_MODE to '{BackendMode.BTP.value}' or '{BackendMode.MOCK.value}' to use this tool."
+)
 
 DEFAULT_FIELDS = (
     "products(code,name,summary,configurable,configuratorType,multidimensional,"
@@ -33,11 +39,14 @@ class OccCommerceApi:
     """Commerce API that calls SAP Commerce Cloud's native OCC (v2) REST API."""
 
     def __init__(self, config: OccCommerceApiConfig | None = None):
+        # os.getenv(key, default) only falls back when the var is fully unset,
+        # not when it's present-but-empty (which is exactly how .env-template
+        # ships these optional vars) — use `or` so a blank value falls back too.
         self._config = config or OccCommerceApiConfig(
-            fields=os.getenv("OCC_FIELDS", DEFAULT_FIELDS),
-            page_size=os.getenv("OCC_PAGE_SIZE", "12"),
-            lang=os.getenv("OCC_LANG", "en"),
-            curr=os.getenv("OCC_CURRENCY", "USD"),
+            fields=os.getenv("OCC_FIELDS") or DEFAULT_FIELDS,
+            page_size=os.getenv("OCC_PAGE_SIZE") or "12",
+            lang=os.getenv("OCC_LANG") or "en",
+            curr=os.getenv("OCC_CURRENCY") or "USD",
         )
         self._client = httpx.Client(timeout=httpx.Timeout(30.0))
 
@@ -65,21 +74,46 @@ class OccCommerceApi:
         data = resp.json()
         return data if isinstance(data, dict) else {"value": data}
 
-    def get_products(self, destination: DestinationDetails) -> dict:
-        """Get products (unfiltered, first page) via OCC products/search.
+    def _resolve_params(
+        self,
+        fields: str | None,
+        page_size: int | str | None,
+        lang: str | None,
+        curr: str | None,
+    ) -> dict[str, str]:
+        """Resolve caller-supplied overrides against this instance's configured
+        defaults (OCC_FIELDS/OCC_PAGE_SIZE/OCC_LANG/OCC_CURRENCY). Callers only
+        need to pass what they want to override — everything else falls back
+        to the config already resolved at construction time."""
+        return {
+            "fields": fields if fields is not None else self._config.fields,
+            "pageSize": str(page_size) if page_size is not None else self._config.page_size,
+            "lang": lang if lang is not None else self._config.lang,
+            "curr": curr if curr is not None else self._config.curr,
+        }
+
+    def get_products(
+        self,
+        destination: DestinationDetails,
+        *,
+        fields: str | None = None,
+        page_size: int | str | None = None,
+        lang: str | None = None,
+        curr: str | None = None,
+    ) -> dict:
+        """Get products (unfiltered, one page) via OCC products/search.
 
         Args:
             destination (DestinationDetails): The details of the destination.
+            fields (str | None): Optional OCC field selector override.
+            page_size (int | str | None): Optional page size override.
+            lang (str | None): Optional language code override.
+            curr (str | None): Optional currency code override.
 
         Returns:
             dict: The products data.
         """
-        params = {
-            "fields": self._config.fields,
-            "pageSize": self._config.page_size,
-            "lang": self._config.lang,
-            "curr": self._config.curr,
-        }
+        params = self._resolve_params(fields, page_size, lang, curr)
         return self._search(destination, params)
 
     def get_categories(self, destination: DestinationDetails) -> dict:
@@ -88,28 +122,33 @@ class OccCommerceApi:
         Raises:
             RuntimeError: Always — OCC has no stock "list all categories" endpoint.
         """
-        raise RuntimeError(
-            "get_categories is not supported in OCC mode. "
-            "Switch BACKEND_MODE to 'BTP' or 'mock' to use this tool."
-        )
+        raise RuntimeError(_NOT_SUPPORTED_MESSAGE.format(method="get_categories"))
 
-    def get_products_by_category(self, destination: DestinationDetails, category_id: str) -> dict:
+    def get_products_by_category(
+        self,
+        destination: DestinationDetails,
+        category_id: str,
+        *,
+        fields: str | None = None,
+        page_size: int | str | None = None,
+        lang: str | None = None,
+        curr: str | None = None,
+    ) -> dict:
         """Get products filtered by category via OCC query=:relevance:category:{id}.
 
         Args:
             destination (DestinationDetails): The details of the destination.
             category_id (str): The ID of the category.
+            fields (str | None): Optional OCC field selector override.
+            page_size (int | str | None): Optional page size override.
+            lang (str | None): Optional language code override.
+            curr (str | None): Optional currency code override.
 
         Returns:
             dict: The products data.
         """
-        params = {
-            "fields": self._config.fields,
-            "query": f":relevance:category:{category_id}",
-            "pageSize": self._config.page_size,
-            "lang": self._config.lang,
-            "curr": self._config.curr,
-        }
+        params = self._resolve_params(fields, page_size, lang, curr)
+        params["query"] = f":relevance:category:{category_id}"
         return self._search(destination, params)
 
     def get_retailers(self, destination: DestinationDetails) -> dict:
@@ -118,7 +157,4 @@ class OccCommerceApi:
         Raises:
             RuntimeError: Always — OCC has no stock "retailers/BusinessPartners" endpoint.
         """
-        raise RuntimeError(
-            "get_retailers is not supported in OCC mode. "
-            "Switch BACKEND_MODE to 'BTP' or 'mock' to use this tool."
-        )
+        raise RuntimeError(_NOT_SUPPORTED_MESSAGE.format(method="get_retailers"))
