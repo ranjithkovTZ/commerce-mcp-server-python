@@ -2,7 +2,7 @@
 
 ### Introduction
 
-This repository contains an MCP (Model Context Protocol) server that exposes tools for working with Commerce OData APIs.
+This repository contains an MCP (Model Context Protocol) server that exposes tools for working with Commerce APIs. It supports both a custom CAP OData backend (BTP mode) and SAP Commerce Cloud's native OCC v2 REST API (OCC mode).
 
 It supports two common ways of running:
 
@@ -13,14 +13,17 @@ It supports two common ways of running:
 
 ### Pre-requisites
 
+`BACKEND_MODE` (`mock`/`BTP`/`OCC`, case-insensitive) is the single switch that selects which backend the server talks to. It defaults to `BTP` if unset.
+
 - **Node.js (for `npx`)**: Required to run the MCP Inspector (`@modelcontextprotocol/inspector`) locally.
 - **SAP BTP subaccount (Cloud Foundry)**: You have access to a BTP subaccount with a Cloud Foundry org/space and can log in using `cf login`.
-  > Not required if running locally with `MOCK_BACKEND=true`.
-- **Commerce OData APIs available**: 
+  > Not required if running locally with `BACKEND_MODE=mock` or `BACKEND_MODE=OCC`.
+- **Commerce OData APIs available** (BTP mode only): 
     1. Commerce OData APIs are already deployed/running and reachable from where you run this MCP server (local or BTP). You can either create a simple e-commerce application using standard CAP template
      or create your own.
     2. Create a destination for the commerce APIs with name - COMMERCE_API_DESTINATION. 
-  > Not required if running locally with `MOCK_BACKEND=true`.
+  > Not required if running locally with `BACKEND_MODE=mock` or `BACKEND_MODE=OCC`.
+- **SAP Commerce Cloud OCC access** (OCC mode only): an OAuth2 client_credentials client registered against your Commerce Cloud tenant's authorization server, and a base site ID. See [Option 3: OCC Backend](#option-3-occ-backend--sap-commerce-cloud-native-api-no-btp-required) below.
 
 
 **Destination name default:**
@@ -163,7 +166,7 @@ No SAP BTP account or deployed Commerce APIs needed. The server serves sample pa
 
 ```
 ENVIRONMENT=local
-MOCK_BACKEND=true
+BACKEND_MODE=mock
 ```
 
 2. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
@@ -178,7 +181,7 @@ MOCK_BACKEND=true
 
 ```
 ENVIRONMENT=local
-MOCK_BACKEND=false
+BACKEND_MODE=BTP
 DESTINATION_NAME=COMMERCE_API_DESTINATION
 ```
 
@@ -189,6 +192,29 @@ DESTINATION_NAME=COMMERCE_API_DESTINATION
 4. This opens the MCP Inspector in your browser.
 
 5. Browse through the tools and run them.
+
+#### Option 3: OCC Backend — SAP Commerce Cloud native API (no BTP required)
+
+No SAP BTP account needed. The server calls SAP Commerce Cloud's native OCC v2 REST API directly, using its own OAuth2 client_credentials.
+
+1. Create a `.env` file in the project root using the `.env-template` and set:
+
+```
+ENVIRONMENT=local
+BACKEND_MODE=OCC
+OCC_BASE_URL=https://api.your-tenant.commerce.ondemand.com
+OCC_TOKEN_URL=https://api.your-tenant.commerce.ondemand.com/authorizationserver/oauth/token
+OCC_CLIENT_ID=your-client-id
+OCC_CLIENT_SECRET=your-client-secret
+OCC_BASE_SITE_ID=your-base-site-id
+```
+`OCC_SCOPE`, `OCC_FIELDS`, `OCC_PAGE_SIZE`, `OCC_LANG`, `OCC_CURRENCY` are optional — see `.env-template` for defaults. The `OCC_TOKEN_URL` path shown (`/authorizationserver/oauth/token`) is a common SAP Commerce Cloud convention — confirm the exact URL with your Commerce Cloud admin/OAuth client configuration.
+
+2. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
+
+3. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
+
+4. If a required `OCC_*` environment variable is missing or empty, the server fails fast at startup with a `RuntimeError` naming the exact missing variable.
 
 ### How to debug the code on local
 

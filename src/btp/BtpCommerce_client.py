@@ -1,24 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import httpx
 
-from destination_auth import (
+from btp.BtpCommerce_auth import (
     DestinationServiceTokenProvider,
     load_destination_service_credentials,
 )
-
-
-@dataclass(frozen=True)
-class DestinationDetails:
-    """Details of a destination as returned by the Destination Service."""
-    name: str
-    url: str
-    authentication: str | None
-    auth_header: str | None
-    username: str | None
-    password: str | None
+from destination_details import DestinationDetails
 
 
 class DestinationServiceClient:

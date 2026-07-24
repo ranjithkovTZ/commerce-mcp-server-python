@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from destination_client import DestinationDetails
+from destination_details import DestinationDetails
 
 
 def _join_url(base: str, path: str) -> str:

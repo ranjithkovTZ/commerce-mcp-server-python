@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-_PAYLOADS = Path(__file__).parent.parent / "assets" / "payloads"
+_PAYLOADS = Path(__file__).parent.parent.parent / "assets" / "payloads"
 
 
 def _load(filename: str) -> dict:

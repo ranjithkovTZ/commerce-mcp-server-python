@@ -9,13 +9,18 @@ from starlette.responses import JSONResponse
 from starlette.middleware import Middleware
 from xsuaa_sec import XSUAAAuthMiddleware
 
-from commerce_api import CommerceApi
-from destination_client import DestinationServiceClient
+from btp.BtpCommerce_api import CommerceApi
+from btp.BtpCommerce_client import DestinationServiceClient
 
 load_dotenv()
 PORT = os.getenv("PORT")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
-MOCK_BACKEND = os.getenv("MOCK_BACKEND", "false").lower() == "true"
+BACKEND_MODE = os.getenv("BACKEND_MODE", "BTP").strip().lower()
+if BACKEND_MODE not in ("mock", "btp", "occ"):
+    raise RuntimeError(f"Invalid BACKEND_MODE '{BACKEND_MODE}'. Must be one of: mock, BTP, OCC.")
+# Internal derived flag only — lets the existing @mcp.tool bodies (which branch
+# on MOCK_BACKEND) stay byte-for-byte unchanged.
+MOCK_BACKEND = BACKEND_MODE == "mock"
 
 if ENVIRONMENT == "local":
     p = Path(os.getenv("VCAP_SERVICES_FILE", "vcap.json"))
@@ -25,20 +30,25 @@ if ENVIRONMENT == "local":
 
 mcp = FastMCP("commerce-mcp-server")
 
-_destination_client = None
+_backend_client = None
 
-if MOCK_BACKEND:
-    from mock_commerce_api import MockCommerceApi
+if BACKEND_MODE == "mock":
+    from mock.mock_commerce_api import MockCommerceApi
     _commerce_api = MockCommerceApi()
-else:
-    _destination_client = DestinationServiceClient(
+elif BACKEND_MODE == "occ":
+    from occ.occ_commerce_client import OccCommerceClient
+    from occ.occ_commerce_api import OccCommerceApi
+    _backend_client = OccCommerceClient()
+    _commerce_api = OccCommerceApi()
+else:  # btp
+    _backend_client = DestinationServiceClient(
         destination_service_instance_name=os.getenv("DESTINATION_SERVICE_INSTANCE_NAME")
     )
     _commerce_api = CommerceApi()
 
 
 def _get_destination(destination_name: str):
-    return _destination_client.get_destination(destination_name)
+    return _backend_client.get_destination(destination_name)
 
 
 @mcp.custom_route("/health", methods=["GET"], include_in_schema=False)
