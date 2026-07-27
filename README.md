@@ -197,22 +197,23 @@ DESTINATION_NAME=COMMERCE_API_DESTINATION
 
 No SAP BTP account needed. The server calls SAP Commerce Cloud's native OCC v2 REST API directly, using its own OAuth2 client_credentials.
 
-1. Create a `.env` file in the project root using the `.env-template` and set:
+1. If your Commerce Cloud tenant doesn't already have an OAuth2 client for this, import `resources/create_mcp_oauth_client.impex` via HAC (Console > ImpEx Import) to register one. Read the comments at the top of that file first — you must set your own `$clientSecret` before importing anywhere real, and confirm the resource id/secret-encoding notes against your tenant's OAuth2 configuration.
+
+2. Create a `.env` file in the project root using the `.env-template` and set:
 
 ```
 ENVIRONMENT=local
 BACKEND_MODE=OCC
 OCC_BASE_URL=https://api.your-tenant.commerce.ondemand.com
-OCC_TOKEN_URL=https://api.your-tenant.commerce.ondemand.com/authorizationserver/oauth/token
 OCC_CLIENT_ID=your-client-id
 OCC_CLIENT_SECRET=your-client-secret
 OCC_BASE_SITE_ID=your-base-site-id
 ```
-`OCC_SCOPE`, `OCC_FIELDS`, `OCC_PAGE_SIZE`, `OCC_LANG`, `OCC_CURRENCY` are optional — see `.env-template` for defaults. The `OCC_TOKEN_URL` path shown (`/authorizationserver/oauth/token`) is a common SAP Commerce Cloud convention — confirm the exact URL with your Commerce Cloud admin/OAuth client configuration.
+The OAuth token endpoint is always derived as `{OCC_BASE_URL}/authorizationserver/oauth/token` (the standard SAP Commerce Cloud convention) — it's not separately configurable. `OCC_SCOPE`, `OCC_FIELDS`, `OCC_PAGE_SIZE`, `OCC_LANG`, `OCC_CURRENCY` are optional — see `.env-template` for defaults.
 
-2. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
+3. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
-3. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
+4. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
 
 4. If a required `OCC_*` environment variable is missing or empty, the server fails fast at startup with a `RuntimeError` naming the exact missing variable.
 

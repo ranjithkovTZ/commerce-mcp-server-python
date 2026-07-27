@@ -9,6 +9,9 @@ import httpx
 
 DEFAULT_TOKEN_EXPIRY_SECONDS = 300
 TOKEN_EXPIRY_SAFETY_MARGIN_SECONDS = 30
+# OCC's OAuth2 token endpoint always lives at this path under the tenant's base
+# URL — not independently configurable, so there's no separate OCC_TOKEN_URL var.
+TOKEN_PATH = "/authorizationserver/oauth/token"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -62,7 +65,13 @@ class OccCommerceTokenProvider:
             data["scope"] = self._creds.scope
 
         resp = self._client.post(self._creds.token_url, data=data, headers=headers)
-        resp.raise_for_status()
+        if resp.is_error:
+            # httpx's default HTTPStatusError message omits the response body,
+            # which is where the OAuth server's actual error (e.g. invalid_client,
+            # invalid_scope) lives — surface it so failures are diagnosable.
+            raise RuntimeError(
+                f"OCC token request failed ({resp.status_code}): {resp.text}"
+            )
         payload = resp.json()
         token = payload.get("access_token")
         if not isinstance(token, str) or not token:
@@ -85,7 +94,6 @@ def load_occ_commerce_credentials() -> OccCommerceCredentials:
     """
     required = {
         "base_url": "OCC_BASE_URL",
-        "token_url": "OCC_TOKEN_URL",
         "client_id": "OCC_CLIENT_ID",
         "client_secret": "OCC_CLIENT_SECRET",
         "base_site_id": "OCC_BASE_SITE_ID",
@@ -107,9 +115,11 @@ def load_occ_commerce_credentials() -> OccCommerceCredentials:
     scope = os.getenv("OCC_SCOPE")
     scope = scope if scope else None
 
+    base_url = values["base_url"].rstrip("/")
+
     return OccCommerceCredentials(
-        base_url=values["base_url"],
-        token_url=values["token_url"],
+        base_url=base_url,
+        token_url=f"{base_url}{TOKEN_PATH}",
         client_id=values["client_id"],
         client_secret=values["client_secret"],
         base_site_id=values["base_site_id"],

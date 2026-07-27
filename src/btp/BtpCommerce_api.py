@@ -33,6 +33,7 @@ class CommerceApi:
         self,
         destination: DestinationDetails,
         *,
+        search: str | None = None,
         fields: str | None = None,
         page_size: int | str | None = None,
         lang: str | None = None,
@@ -42,10 +43,11 @@ class CommerceApi:
 
         Args:
             destination (DestinationDetails): The details of the destination.
-            fields, page_size, lang, curr: Accepted for interface parity with
-                OccCommerceApi (server.py calls this uniformly regardless of
-                backend mode) but ignored — the CAP OData service has no
-                equivalent field-selection/page-size/locale/currency concept.
+            search, fields, page_size, lang, curr: Accepted for interface parity
+                with OccCommerceApi (server.py calls this uniformly regardless
+                of backend mode) but ignored — the CAP OData service has no
+                equivalent free-text-search/field-selection/page-size/locale/
+                currency concept.
 
         Returns:
             dict: The products data.

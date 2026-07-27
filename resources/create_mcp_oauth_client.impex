@@ -1,0 +1,44 @@
+# Registers an OAuth2 client in SAP Commerce Cloud for this MCP server's OCC
+# (BACKEND_MODE=OCC) direct-backend mode — no BTP required.
+#
+# How to run:
+#   HAC > Console > ImpEx Import > paste this file (or upload it), then Import.
+#   (Or via your CI/CD data-import step, e.g. an OCC/CCv2 impex import job.)
+#
+# Before running:
+#   1. $clientSecret below is a literal value meant for local/dev use only —
+#      replace it with your own strong, randomly generated secret before
+#      importing anywhere real, and never commit a real production secret
+#      to this repo.
+#   2. Confirm with your Commerce Cloud admin whether OAuthClientDetails.clientSecret
+#      must be pre-encoded (e.g. a "{bcrypt}..." prefix) for your tenant's
+#      OAuth2 configuration, or whether plaintext is accepted as-is (OOTB
+#      default). Adjust $clientSecret accordingly if pre-encoding is required.
+#   3. $resourceId ("hybris") matches SAP Commerce's OOTB authorizationserver
+#      default — only change it if your tenant's commercewebservices/
+#      authorizationserver config uses a different resource id.
+#
+# After running, set these in the MCP server's .env (see .env-template):
+#   OCC_CLIENT_ID=<$clientId value below>
+#   OCC_CLIENT_SECRET=<the real secret you set in $clientSecret>
+#   OCC_SCOPE=basic   (this MCP server only ever requests "basic"; only set
+#                      this if your tenant enforces scope validation)
+#
+# Note — this client is registered broader than what this MCP server itself
+# needs: scope "basic,extended,openid", grant types "client_credentials,
+# authorization_code,refresh_token,password" (with a registeredRedirectUri
+# for the authorization_code flow), and authority ROLE_TRUSTED_CLIENT
+# (privileged — see SAP's guidance to avoid granting it beyond what's
+# actually required). This MCP server only ever calls the token endpoint
+# with grant_type=client_credentials and scope=basic, and only calls OCC's
+# read-only products/search endpoint, which ROLE_CLIENT alone is sufficient
+# for. Keep the broader config only if this client is intentionally shared
+# with other integrations/flows beyond this MCP server.
+
+$clientId=mcp-commerce-client
+$clientSecret=mcp_client@123
+$resourceId=hybris
+
+# OAuth client for MCP server (client_credentials, authorization_code, refresh_token, password grants)
+INSERT_UPDATE OAuthClientDetails; clientId[unique = true]; resourceIds; scope                ; authorizedGrantTypes                                      ; authorities  ; clientSecret     ; registeredRedirectUri
+                                ; $clientId           ; $resourceId     ; basic,extended,openid ; client_credentials,authorization_code,refresh_token,password ; ROLE_TRUSTED_CLIENT ; $clientSecret ; http://localhost/authorizationserver/oauth2_callback

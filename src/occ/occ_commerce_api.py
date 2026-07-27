@@ -26,6 +26,29 @@ def _join_url(base: str, path: str) -> str:
     return base.rstrip("/") + "/" + path.lstrip("/")
 
 
+def _absolutize_image_urls(node, base_url: str) -> None:
+    """Recursively rewrite OCC image DTO 'url' fields in place.
+
+    OCC always returns media URLs relative to the commerce instance (e.g.
+    "/medias/xxx.jpg?context=...") regardless of which endpoint or field
+    selector produced them — the media host is allowed to differ from the
+    API host, so the client is expected to resolve it. Walk the whole
+    response tree rather than a fixed path, since images show up at
+    varying depths (product.images, variantOptions[].images,
+    baseProduct.images, galleryImages, ...) and new OCC field selectors
+    will keep following the same shape.
+    """
+    if isinstance(node, dict):
+        url = node.get("url")
+        if isinstance(url, str) and url.startswith("/") and ("format" in node or "imageType" in node):
+            node["url"] = _join_url(base_url, url)
+        for value in node.values():
+            _absolutize_image_urls(value, base_url)
+    elif isinstance(node, list):
+        for item in node:
+            _absolutize_image_urls(item, base_url)
+
+
 @dataclass(frozen=True)
 class OccCommerceApiConfig:
     """API paths and search defaults for SAP Commerce Cloud's OCC v2 API."""
@@ -72,7 +95,9 @@ class OccCommerceApi:
         resp = self._client.get(url, params=params, headers=self._headers(destination))
         resp.raise_for_status()
         data = resp.json()
-        return data if isinstance(data, dict) else {"value": data}
+        data = data if isinstance(data, dict) else {"value": data}
+        _absolutize_image_urls(data, destination.url)
+        return data
 
     def _resolve_params(
         self,
@@ -96,15 +121,18 @@ class OccCommerceApi:
         self,
         destination: DestinationDetails,
         *,
+        search: str | None = None,
         fields: str | None = None,
         page_size: int | str | None = None,
         lang: str | None = None,
         curr: str | None = None,
     ) -> dict:
-        """Get products (unfiltered, one page) via OCC products/search.
+        """Get products via OCC products/search — free-text search if `search`
+        is given, otherwise an unfiltered listing (one page).
 
         Args:
             destination (DestinationDetails): The details of the destination.
+            search (str | None): Optional free-text search term.
             fields (str | None): Optional OCC field selector override.
             page_size (int | str | None): Optional page size override.
             lang (str | None): Optional language code override.
@@ -114,6 +142,8 @@ class OccCommerceApi:
             dict: The products data.
         """
         params = self._resolve_params(fields, page_size, lang, curr)
+        if search:
+            params["query"] = f"{search}:relevance"
         return self._search(destination, params)
 
     def get_categories(self, destination: DestinationDetails) -> dict:

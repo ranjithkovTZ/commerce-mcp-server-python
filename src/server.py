@@ -76,6 +76,7 @@ def mcp_ping() -> dict:
 
 @mcp.tool
 def get_products(
+    search: str | None = None,
     fields: str | None = None,
     page_size: int | None = None,
     lang: str | None = None,
@@ -84,6 +85,7 @@ def get_products(
     """Fetch products from the Commerce API.
 
     Args:
+        search: Optional free-text search term (OCC mode only; ignored otherwise).
         fields: Optional OCC field selector override (OCC mode only; ignored otherwise).
         page_size: Optional page size override (OCC mode only; ignored otherwise).
         lang: Optional language code override (OCC mode only; ignored otherwise).
@@ -100,7 +102,7 @@ def get_products(
         destination_name = os.getenv("DESTINATION_NAME") or "COMMERCE_API_DESTINATION"
         destination = _get_destination(destination_name)
         data = _commerce_api.get_products(
-            destination, fields=fields, page_size=page_size, lang=lang, curr=curr
+            destination, search=search, fields=fields, page_size=page_size, lang=lang, curr=curr
         )
         return {"status": "success", "destination": destination_name, "data": data}
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
