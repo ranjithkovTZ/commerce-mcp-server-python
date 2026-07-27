@@ -171,7 +171,7 @@ BACKEND_MODE=mock
 
 2. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
-3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`) return mock data immediately.
+3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`, `get_product_details`) return mock data immediately.
 
 #### Option 2: Live Backend (BTP required)
 
@@ -208,14 +208,15 @@ OCC_BASE_URL=https://api.your-tenant.commerce.ondemand.com
 OCC_CLIENT_ID=your-client-id
 OCC_CLIENT_SECRET=your-client-secret
 OCC_BASE_SITE_ID=your-base-site-id
+WEBSITE_URL=https://your-storefront-host/your-base-site/en/USD
 ```
-The OAuth token endpoint is always derived as `{OCC_BASE_URL}/authorizationserver/oauth/token` (the standard SAP Commerce Cloud convention) — it's not separately configurable. `OCC_SCOPE`, `OCC_FIELDS`, `OCC_PAGE_SIZE`, `OCC_LANG`, `OCC_CURRENCY` are optional — see `.env-template` for defaults.
+The OAuth token endpoint is always derived as `{OCC_BASE_URL}/authorizationserver/oauth/token` (the standard SAP Commerce Cloud convention) — it's not separately configurable. `WEBSITE_URL` is the storefront host (e.g. your Spartacus/Accelerator site, including its base-site/language/currency path prefix) — it's a separate host from `OCC_BASE_URL` on most tenants, and is used to build absolute links a client can redirect a customer to (product/category URLs); media URLs (images) are still resolved against `OCC_BASE_URL`. `OCC_SCOPE` is optional — see `.env-template` for defaults. Field selector, page size, language, and currency always use built-in defaults (a curated field selector, page size 12, `en`, `USD`); a caller can override any of these per-call via the tools' `fields`/`page_size`/`lang`/`curr` arguments, but they are no longer configurable via environment variables.
 
 3. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
-4. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
+4. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. `get_product_details` calls OCC's `products/{productCode}` endpoint (field selector defaults to `FULL`, overridable per-call via the tool's `fields` argument). **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
 
-4. If a required `OCC_*` environment variable is missing or empty, the server fails fast at startup with a `RuntimeError` naming the exact missing variable.
+4. If a required `OCC_*` environment variable (or `WEBSITE_URL`) is missing or empty, the server fails fast at startup with a `RuntimeError` naming the exact missing variable.
 
 ### How to debug the code on local
 
@@ -337,4 +338,16 @@ curl -sS -X POST "$MCP_URL" \
   -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SID" \
   -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_retailers","arguments":{}}}'
+```
+
+13. Call get_product_details tool
+```bash
+PRODUCT_CODE="OT005"
+
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"get_product_details\",\"arguments\":{\"product_code\":\"$PRODUCT_CODE\"}}}"
 ```

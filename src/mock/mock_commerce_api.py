@@ -29,6 +29,14 @@ class MockCommerceApi:
         filtered = [p for p in data.get("value", []) if p.get("category_ID") == category_id]
         return {"@odata.context": "$metadata#Products", "value": filtered}
 
+    def get_product_details(self, destination=None, product_code: str = "") -> dict:
+        """Return a single product looked up by sku (the mock 'product code')."""
+        data = _load("get_products_response.json")
+        for product in data.get("value", []):
+            if product.get("sku") == product_code:
+                return product
+        raise ValueError(f"No product found with product_code '{product_code}'.")
+
     def get_retailers(self, destination=None) -> dict:
         """Return business partners filtered to retailer type."""
         data = _load("get_business_partners.json")

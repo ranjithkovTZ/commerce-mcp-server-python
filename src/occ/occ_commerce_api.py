@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
+from urllib.parse import quote
 
 import httpx
 
@@ -21,32 +21,43 @@ DEFAULT_FIELDS = (
     "currentQuery,keywordRedirectUrl"
 )
 
+# The single-product endpoint returns one ProductWsDTO (not a search results
+# envelope), so it uses OCC's flat BASIC/DEFAULT/FULL field-level aliases
+# rather than the nested "products(...)" shape above.
+DEFAULT_PRODUCT_FIELDS = "FULL"
+
 
 def _join_url(base: str, path: str) -> str:
     return base.rstrip("/") + "/" + path.lstrip("/")
 
 
-def _absolutize_image_urls(node, base_url: str) -> None:
-    """Recursively rewrite OCC image DTO 'url' fields in place.
+def _absolutize_urls(node, *, media_base_url: str, website_base_url: str) -> None:
+    """Recursively rewrite every OCC 'url' field in place to an absolute URL.
 
-    OCC always returns media URLs relative to the commerce instance (e.g.
-    "/medias/xxx.jpg?context=...") regardless of which endpoint or field
-    selector produced them — the media host is allowed to differ from the
-    API host, so the client is expected to resolve it. Walk the whole
-    response tree rather than a fixed path, since images show up at
-    varying depths (product.images, variantOptions[].images,
-    baseProduct.images, galleryImages, ...) and new OCC field selectors
-    will keep following the same shape.
+    OCC returns every host-relative link (media DTOs like "/medias/xxx.jpg",
+    a product's own PDP link like "/Open-Catalogue/.../p/{code}", category
+    redirect links, ...) relative to the commerce instance, regardless of
+    which endpoint or field selector produced them — the client is expected
+    to resolve them itself. Media URLs resolve against the OCC API host
+    (media DTOs are recognizable by their "format"/"imageType" siblings);
+    everything else (product/category/other navigational links) resolves
+    against the storefront host instead, since that's the site a customer
+    would actually be redirected to — the two hosts are not guaranteed to
+    be the same. Walk the whole response tree rather than a fixed path,
+    since these show up at varying depths (product.images,
+    product.categories, variantOptions[].images, baseProduct.images, ...)
+    and new OCC field selectors will keep following the same shape.
     """
     if isinstance(node, dict):
         url = node.get("url")
-        if isinstance(url, str) and url.startswith("/") and ("format" in node or "imageType" in node):
-            node["url"] = _join_url(base_url, url)
+        if isinstance(url, str) and url.startswith("/"):
+            is_media = "format" in node or "imageType" in node
+            node["url"] = _join_url(media_base_url if is_media else website_base_url, url)
         for value in node.values():
-            _absolutize_image_urls(value, base_url)
+            _absolutize_urls(value, media_base_url=media_base_url, website_base_url=website_base_url)
     elif isinstance(node, list):
         for item in node:
-            _absolutize_image_urls(item, base_url)
+            _absolutize_urls(item, media_base_url=media_base_url, website_base_url=website_base_url)
 
 
 @dataclass(frozen=True)
@@ -56,21 +67,14 @@ class OccCommerceApiConfig:
     page_size: str = "12"
     lang: str = "en"
     curr: str = "USD"
+    product_fields: str = DEFAULT_PRODUCT_FIELDS
 
 
 class OccCommerceApi:
     """Commerce API that calls SAP Commerce Cloud's native OCC (v2) REST API."""
 
     def __init__(self, config: OccCommerceApiConfig | None = None):
-        # os.getenv(key, default) only falls back when the var is fully unset,
-        # not when it's present-but-empty (which is exactly how .env-template
-        # ships these optional vars) — use `or` so a blank value falls back too.
-        self._config = config or OccCommerceApiConfig(
-            fields=os.getenv("OCC_FIELDS") or DEFAULT_FIELDS,
-            page_size=os.getenv("OCC_PAGE_SIZE") or "12",
-            lang=os.getenv("OCC_LANG") or "en",
-            curr=os.getenv("OCC_CURRENCY") or "USD",
-        )
+        self._config = config or OccCommerceApiConfig()
         self._client = httpx.Client(timeout=httpx.Timeout(30.0))
 
     def _require_base_site_id(self, destination: DestinationDetails) -> str:
@@ -79,6 +83,13 @@ class OccCommerceApi:
                 "base_site_id missing on destination; check OCC_BASE_SITE_ID in .env"
             )
         return destination.base_site_id
+
+    def _require_website_url(self, destination: DestinationDetails) -> str:
+        if not destination.website_url:
+            raise RuntimeError(
+                "website_url missing on destination; check WEBSITE_URL in .env"
+            )
+        return destination.website_url
 
     def _headers(self, destination: DestinationDetails) -> dict[str, str]:
         headers: dict[str, str] = {"Accept": "application/json"}
@@ -96,7 +107,34 @@ class OccCommerceApi:
         resp.raise_for_status()
         data = resp.json()
         data = data if isinstance(data, dict) else {"value": data}
-        _absolutize_image_urls(data, destination.url)
+        _absolutize_urls(
+            data,
+            media_base_url=destination.url,
+            website_base_url=self._require_website_url(destination),
+        )
+        return data
+
+    def _get_product(
+        self, destination: DestinationDetails, product_code: str, params: dict[str, str]
+    ) -> dict:
+        base_site_id = self._require_base_site_id(destination)
+        # product_code goes into the URL path (not a query param), so it needs
+        # explicit escaping — httpx only escapes query param values, not paths.
+        url = _join_url(
+            destination.url, f"/occ/v2/{base_site_id}/products/{quote(str(product_code), safe='')}"
+        )
+
+        print(f"URL: {url}")
+
+        resp = self._client.get(url, params=params, headers=self._headers(destination))
+        resp.raise_for_status()
+        data = resp.json()
+        data = data if isinstance(data, dict) else {"value": data}
+        _absolutize_urls(
+            data,
+            media_base_url=destination.url,
+            website_base_url=self._require_website_url(destination),
+        )
         return data
 
     def _resolve_params(
@@ -106,10 +144,9 @@ class OccCommerceApi:
         lang: str | None,
         curr: str | None,
     ) -> dict[str, str]:
-        """Resolve caller-supplied overrides against this instance's configured
-        defaults (OCC_FIELDS/OCC_PAGE_SIZE/OCC_LANG/OCC_CURRENCY). Callers only
-        need to pass what they want to override — everything else falls back
-        to the config already resolved at construction time."""
+        """Resolve caller-supplied overrides against this instance's built-in
+        defaults (DEFAULT_FIELDS, page size 12, lang "en", curr "USD"). Callers
+        only need to pass what they want to override for a given call."""
         return {
             "fields": fields if fields is not None else self._config.fields,
             "pageSize": str(page_size) if page_size is not None else self._config.page_size,
@@ -180,6 +217,36 @@ class OccCommerceApi:
         params = self._resolve_params(fields, page_size, lang, curr)
         params["query"] = f":relevance:category:{category_id}"
         return self._search(destination, params)
+
+    def get_product_details(
+        self,
+        destination: DestinationDetails,
+        product_code: str,
+        *,
+        fields: str | None = None,
+        lang: str | None = None,
+        curr: str | None = None,
+    ) -> dict:
+        """Get a single product's details (PDP) via OCC GET /products/{productCode}.
+
+        Args:
+            destination (DestinationDetails): The details of the destination.
+            product_code (str): The product code (OCC `code`) to fetch.
+            fields (str | None): Optional OCC field selector override (defaults to FULL).
+            lang (str | None): Optional language code override.
+            curr (str | None): Optional currency code override.
+
+        Returns:
+            dict: The single product's details.
+        """
+        # No pageSize/query here — unlike _resolve_params, this endpoint returns
+        # one ProductWsDTO, not a paged search result.
+        params = {
+            "fields": fields if fields is not None else self._config.product_fields,
+            "lang": lang if lang is not None else self._config.lang,
+            "curr": curr if curr is not None else self._config.curr,
+        }
+        return self._get_product(destination, product_code, params)
 
     def get_retailers(self, destination: DestinationDetails) -> dict:
         """Not supported in OCC mode.
