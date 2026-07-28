@@ -207,6 +207,35 @@ def get_product_details(
 
 
 @mcp.tool
+def get_product_stock(product_code: str) -> dict:
+    """Fetch a single product's stock/availability details from the Commerce API.
+
+    Args:
+        product_code: The product code to check stock for.
+
+    Returns:
+        dict: The product's stock/availability details or error message.
+    """
+    if not product_code:
+        return {
+            "status": "error",
+            "message": "Missing product_code. Provide product_code as an argument.",
+        }
+
+    try:
+        if MOCK_BACKEND:
+            data = _commerce_api.get_product_stock(product_code=product_code)
+            return {"status": "success", "destination": BackendMode.MOCK.value, "data": data}
+
+        destination_name = os.getenv("DESTINATION_NAME") or "COMMERCE_API_DESTINATION"
+        destination = _get_destination(destination_name)
+        data = _commerce_api.get_product_stock(destination, product_code)
+        return {"status": "success", "destination": destination_name, "data": data}
+    except (httpx.HTTPError, RuntimeError, ValueError, KeyError, TypeError) as e:
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool
 def get_retailers() -> dict:
     """Fetch the retailers.
 

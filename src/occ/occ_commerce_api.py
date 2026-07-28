@@ -137,6 +137,32 @@ class OccCommerceApi:
         )
         return data
 
+    def _get_unit_code(self, destination: DestinationDetails, product_code: str) -> str:
+        data = self._get_product(destination, product_code, {"fields": "code,sapUnit"})
+        unit_code = data.get("sapUnit", {}).get("code")
+        if not unit_code:
+            raise RuntimeError(f"Product '{product_code}' has no sapUnit; cannot resolve stock availability.")
+        return unit_code
+
+    def _stock_availability(
+        self, destination: DestinationDetails, product_code: str, unit_code: str
+    ) -> dict:
+        base_site_id = self._require_base_site_id(destination)
+        url = _join_url(destination.url, f"/occ/v2/{base_site_id}/productAvailabilities")
+
+        print(f"URL: {url}")
+
+        resp = self._client.get(
+            url,
+            params={"filters": f"{product_code}:{unit_code}"},
+            headers=self._headers(destination),
+        )
+        resp.raise_for_status()
+        items = resp.json().get("availabilityItems") or []
+        if not items:
+            raise ValueError(f"No stock availability found for product_code '{product_code}'.")
+        return items[0]
+
     def _resolve_params(
         self,
         fields: str | None,
@@ -247,6 +273,21 @@ class OccCommerceApi:
             "curr": curr if curr is not None else self._config.curr,
         }
         return self._get_product(destination, product_code, params)
+
+    def get_product_stock(self, destination: DestinationDetails, product_code: str) -> dict:
+        """Get a single product's real-time stock/availability via OCC's OOTB
+        GET /productAvailabilities?filters={productCode}:{unitCode} endpoint.
+
+        Args:
+            destination (DestinationDetails): The details of the destination.
+            product_code (str): The product code to check stock for.
+
+        Returns:
+            dict: The single product's availability item
+                ({"productCode": ..., "unitAvailabilities": [...]}).
+        """
+        unit_code = self._get_unit_code(destination, product_code)
+        return self._stock_availability(destination, product_code, unit_code)
 
     def get_retailers(self, destination: DestinationDetails) -> dict:
         """Not supported in OCC mode.

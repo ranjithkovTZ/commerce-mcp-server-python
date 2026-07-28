@@ -37,6 +37,14 @@ class MockCommerceApi:
             raise ValueError(f"No product found with product_code '{product_code}'.")
         return product
 
+    def get_product_stock(self, destination=None, product_code: str = "") -> dict:
+        """Return a single product's stock/availability looked up by product_code (sku)."""
+        data = _load("get_product_stock_response.json")
+        stock = data.get(product_code)
+        if stock is None:
+            raise ValueError(f"No stock availability found for product_code '{product_code}'.")
+        return stock
+
     def get_retailers(self, destination=None) -> dict:
         """Return business partners filtered to retailer type."""
         data = _load("get_business_partners.json")

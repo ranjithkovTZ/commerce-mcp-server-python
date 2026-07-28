@@ -1,0 +1,74 @@
+{
+  "OT005": {
+    "productCode": "OT005",
+    "unitAvailabilities": [
+      {"quantity": 42, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  },
+  "PT001": {
+    "productCode": "PT001",
+    "unitAvailabilities": [
+      {"quantity": 15, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  },
+  "PT002": {
+    "productCode": "PT002",
+    "unitAvailabilities": [
+      {"quantity": 3, "status": "LOW_STOCK", "unit": "pieces"}
+    ]
+  },
+  "PT003": {
+    "productCode": "PT003",
+    "unitAvailabilities": [
+      {"quantity": 27, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  },
+  "PT004": {
+    "productCode": "PT004",
+    "unitAvailabilities": [
+      {"quantity": 0, "status": "OUT_OF_STOCK", "unit": "pieces"}
+    ]
+  },
+  "PT005": {
+    "productCode": "PT005",
+    "unitAvailabilities": [
+      {"quantity": 18, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  },
+  "OT001": {
+    "productCode": "OT001",
+    "unitAvailabilities": [
+      {"quantity": 9, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  },
+  "OT002": {
+    "productCode": "OT002",
+    "unitAvailabilities": [
+      {"quantity": 2, "status": "LOW_STOCK", "unit": "pieces"}
+    ]
+  },
+  "OT003": {
+    "productCode": "OT003",
+    "unitAvailabilities": [
+      {"quantity": 11, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  },
+  "OT004": {
+    "productCode": "OT004",
+    "unitAvailabilities": [
+      {"quantity": 33, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  },
+  "PT006": {
+    "productCode": "PT006",
+    "unitAvailabilities": [
+      {"quantity": 0, "status": "OUT_OF_STOCK", "unit": "pieces"}
+    ]
+  },
+  "OT006": {
+    "productCode": "OT006",
+    "unitAvailabilities": [
+      {"quantity": 24, "status": "IN_STOCK", "unit": "pieces"}
+    ]
+  }
+}

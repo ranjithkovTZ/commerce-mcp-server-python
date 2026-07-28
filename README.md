@@ -171,7 +171,7 @@ BACKEND_MODE=mock
 
 2. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
-3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`, `get_product_details`) return mock data immediately.
+3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`, `get_product_details`, `get_product_stock`) return mock data immediately.
 
 #### Option 2: Live Backend (BTP required)
 
@@ -214,7 +214,7 @@ The OAuth token endpoint is always derived as `{OCC_BASE_URL}/authorizationserve
 
 3. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
-4. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. `get_product_details` calls OCC's `products/{productCode}` endpoint (field selector defaults to `FULL`, overridable per-call via the tool's `fields` argument). **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
+4. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. `get_product_details` calls OCC's `products/{productCode}` endpoint (field selector defaults to `FULL`, overridable per-call via the tool's `fields` argument) — this already includes a static `stock` field. `get_product_stock` is a separate tool that calls OCC's OOTB `productAvailabilities` endpoint (`/productAvailabilities?filters={productCode}:{unitCode}`, with the unit code resolved from the product's `sapUnit`) for real-time stock/availability, distinct from the static `stock` field embedded in `get_product_details`. **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
 
 4. If a required `OCC_*` environment variable (or `WEBSITE_URL`) is missing or empty, the server fails fast at startup with a `RuntimeError` naming the exact missing variable.
 
@@ -350,4 +350,16 @@ curl -sS -X POST "$MCP_URL" \
   -H "Content-Type: application/json" \
   -H "Mcp-Session-Id: $SID" \
   -d "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"get_product_details\",\"arguments\":{\"product_code\":\"$PRODUCT_CODE\"}}}"
+```
+
+14. Call get_product_stock tool
+```bash
+PRODUCT_CODE="OT005"
+
+curl -sS -X POST "$MCP_URL" \
+  -H "Authorization: Bearer $MCP_XSUAA_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: $SID" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"get_product_stock\",\"arguments\":{\"product_code\":\"$PRODUCT_CODE\"}}}"
 ```
