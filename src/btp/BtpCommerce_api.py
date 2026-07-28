@@ -12,6 +12,12 @@ def _join_url(base: str, path: str) -> str:
     return base.rstrip("/") + "/" + path.lstrip("/")
 
 
+_NOT_IMPLEMENTED_MESSAGE = (
+    "{method} is not implemented for BTP mode yet. "
+    "Switch BACKEND_MODE to 'mock' or 'occ' to use this tool."
+)
+
+
 @dataclass(frozen=True)
 class CommerceApiConfig:
     """API paths
@@ -155,3 +161,39 @@ class CommerceApi:
         resp.raise_for_status()
         data = resp.json()
         return data if isinstance(data, dict) else {"value": data}
+
+    def get_product_details(
+        self,
+        destination: DestinationDetails,
+        product_code: str,
+        *,
+        fields: str | None = None,
+        lang: str | None = None,
+        curr: str | None = None,
+    ) -> dict:
+        """Not implemented for BTP mode.
+
+        Args:
+            destination, product_code, fields, lang, curr: Accepted for interface
+                parity with OccCommerceApi/MockCommerceApi (server.py calls this
+                uniformly regardless of backend mode) but unused.
+
+        Raises:
+            RuntimeError: Always — this tool has not been implemented for the
+                CAP OData backend yet.
+        """
+        raise RuntimeError(_NOT_IMPLEMENTED_MESSAGE.format(method="get_product_details"))
+
+    def get_product_stock(self, destination: DestinationDetails, product_code: str) -> dict:
+        """Not implemented for BTP mode.
+
+        Args:
+            destination, product_code: Accepted for interface parity with
+                OccCommerceApi/MockCommerceApi (server.py calls this uniformly
+                regardless of backend mode) but unused.
+
+        Raises:
+            RuntimeError: Always — this tool has not been implemented for the
+                CAP OData backend yet.
+        """
+        raise RuntimeError(_NOT_IMPLEMENTED_MESSAGE.format(method="get_product_stock"))

@@ -22,6 +22,7 @@ class OccCommerceCredentials:
     client_id: str
     client_secret: str
     base_site_id: str
+    website_url: str
     scope: str | None = None
 
 
@@ -97,6 +98,7 @@ def load_occ_commerce_credentials() -> OccCommerceCredentials:
         "client_id": "OCC_CLIENT_ID",
         "client_secret": "OCC_CLIENT_SECRET",
         "base_site_id": "OCC_BASE_SITE_ID",
+        "website_url": "WEBSITE_URL",
     }
     values: dict[str, str] = {}
     missing: list[str] = []
@@ -123,5 +125,6 @@ def load_occ_commerce_credentials() -> OccCommerceCredentials:
         client_id=values["client_id"],
         client_secret=values["client_secret"],
         base_site_id=values["base_site_id"],
+        website_url=values["website_url"].rstrip("/"),
         scope=scope,
     )

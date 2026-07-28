@@ -14,3 +14,4 @@ class DestinationDetails:
     username: str | None
     password: str | None
     base_site_id: str | None = None  # only populated by OCC mode
+    website_url: str | None = None  # only populated by OCC mode
