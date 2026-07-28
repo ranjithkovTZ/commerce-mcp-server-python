@@ -1,0 +1,76 @@
+{
+  "jane.doe@example.com": {
+    "00001234": {
+      "code": "00001234",
+      "guid": "00001234",
+      "created": "2026-06-15T10:32:00+0000",
+      "status": "COMPLETED",
+      "statusDisplay": "Completed",
+      "total": { "value": 129.97, "currencyIso": "USD", "formattedValue": "$129.97" },
+      "subTotal": { "value": 119.96, "currencyIso": "USD", "formattedValue": "$119.96" },
+      "deliveryCost": { "value": 9.99, "currencyIso": "USD", "formattedValue": "$9.99" },
+      "deliveryStatus": "DELIVERY_COMPLETED",
+      "placedBy": "jane.doe@example.com",
+      "user": { "uid": "jane.doe@example.com", "name": "Jane Doe" },
+      "deliveryAddress": {
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "line1": "123 Main St",
+        "town": "Springfield",
+        "postalCode": "62704",
+        "country": { "isocode": "US", "name": "United States" }
+      },
+      "paymentInfo": {
+        "cardType": { "name": "Visa" },
+        "cardNumber": "************1111",
+        "expiryMonth": "05",
+        "expiryYear": "2028"
+      },
+      "entries": [
+        {
+          "entryNumber": 0,
+          "product": { "code": "OT005", "name": "Sample Product" },
+          "quantity": 2,
+          "basePrice": { "value": 29.99, "currencyIso": "USD", "formattedValue": "$29.99" },
+          "totalPrice": { "value": 59.98, "currencyIso": "USD", "formattedValue": "$59.98" }
+        }
+      ]
+    },
+    "00001198": {
+      "code": "00001198",
+      "guid": "00001198",
+      "created": "2026-05-02T14:05:00+0000",
+      "status": "CANCELLED",
+      "statusDisplay": "Cancelled",
+      "total": { "value": 45.0, "currencyIso": "USD", "formattedValue": "$45.00" },
+      "subTotal": { "value": 45.0, "currencyIso": "USD", "formattedValue": "$45.00" },
+      "deliveryCost": { "value": 0.0, "currencyIso": "USD", "formattedValue": "$0.00" },
+      "deliveryStatus": null,
+      "placedBy": "jane.doe@example.com",
+      "user": { "uid": "jane.doe@example.com", "name": "Jane Doe" },
+      "deliveryAddress": {
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "line1": "123 Main St",
+        "town": "Springfield",
+        "postalCode": "62704",
+        "country": { "isocode": "US", "name": "United States" }
+      },
+      "paymentInfo": {
+        "cardType": { "name": "Visa" },
+        "cardNumber": "************1111",
+        "expiryMonth": "05",
+        "expiryYear": "2028"
+      },
+      "entries": [
+        {
+          "entryNumber": 0,
+          "product": { "code": "OT012", "name": "Another Product" },
+          "quantity": 1,
+          "basePrice": { "value": 45.0, "currencyIso": "USD", "formattedValue": "$45.00" },
+          "totalPrice": { "value": 45.0, "currencyIso": "USD", "formattedValue": "$45.00" }
+        }
+      ]
+    }
+  }
+}

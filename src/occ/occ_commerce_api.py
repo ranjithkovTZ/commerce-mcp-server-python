@@ -68,6 +68,7 @@ class OccCommerceApiConfig:
     lang: str = "en"
     curr: str = "USD"
     product_fields: str = DEFAULT_PRODUCT_FIELDS
+    order_fields: str = "FULL"
 
 
 class OccCommerceApi:
@@ -296,3 +297,133 @@ class OccCommerceApi:
             RuntimeError: Always — OCC has no stock "retailers/BusinessPartners" endpoint.
         """
         raise RuntimeError(_NOT_SUPPORTED_MESSAGE.format(method="get_retailers"))
+
+    def get_customer_orders(
+        self,
+        destination: DestinationDetails,
+        email: str,
+        *,
+        fields: str | None = None,
+        page_size: int | str | None = None,
+        current_page: int | str | None = None,
+        sort: str | None = None,
+    ) -> dict:
+        """Get a customer's order history via OCC's OOTB GET /users/{userId}/orders,
+        using the caller-supplied destination's auth_header as-is. The caller
+        is responsible for passing a destination whose auth_header carries the
+        CS agent's own OCC-authorized bearer token — not the service-level
+        client_credentials token used by every other method in this class —
+        since order history is scoped by whatever permission that specific
+        agent actually holds in Commerce.
+
+        ASSUMPTION: this tenant's OCC userId equals the customer's email
+        address (SAP Commerce's standard OOTB B2C convention). If this
+        tenant customizes login/uid, `email` will not resolve to the
+        correct customer.
+
+        Args:
+            destination (DestinationDetails): Its `auth_header` must already
+                carry the agent's own bearer token.
+            email (str): The customer's email, used directly as OCC's {userId}.
+            fields (str | None): Optional OCC field selector override (defaults to FULL).
+            page_size (int | str | None): Optional page size override.
+            current_page (int | str | None): Optional zero-based page index override.
+            sort (str | None): Optional OCC sort key override.
+
+        Returns:
+            dict: The OCC order history payload ({"orders": [...], "pagination": {...}, "sorts": [...]}).
+
+        Raises:
+            RuntimeError: On a 403 (agent lacks permission for this customer's
+                orders), a 404 (no such customer/email), or any other non-2xx
+                response, with OCC's real error body included.
+        """
+        base_site_id = self._require_base_site_id(destination)
+        url = _join_url(
+            destination.url, f"/occ/v2/{base_site_id}/users/{quote(str(email), safe='')}/orders"
+        )
+        params = {
+            "fields": fields if fields is not None else self._config.order_fields,
+            "pageSize": str(page_size) if page_size is not None else self._config.page_size,
+        }
+        if current_page is not None:
+            params["currentPage"] = str(current_page)
+        if sort is not None:
+            params["sort"] = sort
+
+        print(f"URL: {url}")
+
+        resp = self._client.get(url, params=params, headers=self._headers(destination))
+        if resp.is_error:
+            self._raise_order_error(resp, email)
+        return resp.json()
+
+    def get_order_details(
+        self,
+        destination: DestinationDetails,
+        email: str,
+        order_id: str,
+        *,
+        fields: str | None = None,
+    ) -> dict:
+        """Get a single order's full details via OCC's OOTB
+        GET /users/{userId}/orders/{code}, using the caller-supplied
+        destination's auth_header as-is (must carry the CS agent's own
+        OCC-authorized bearer token — not the service-level client_credentials
+        token used by every other method in this class).
+
+        ASSUMPTION: this tenant's OCC userId equals the customer's email
+        address (SAP Commerce's standard OOTB B2C convention). If this
+        tenant customizes login/uid, `email` will not resolve to the
+        correct customer.
+
+        Args:
+            destination (DestinationDetails): Its `auth_header` must already
+                carry the agent's own bearer token.
+            email (str): The customer's email, used directly as OCC's {userId}.
+            order_id (str): The order code to fetch details for.
+            fields (str | None): Optional OCC field selector override (defaults to FULL).
+
+        Returns:
+            dict: The OCC order details payload (OrderWsDTO shape).
+
+        Raises:
+            RuntimeError: On a 403 (agent lacks permission for this customer's
+                orders), a 404 (no such order for this customer), or any other
+                non-2xx response, with OCC's real error body included.
+        """
+        base_site_id = self._require_base_site_id(destination)
+        url = _join_url(
+            destination.url,
+            f"/occ/v2/{base_site_id}/users/{quote(str(email), safe='')}"
+            f"/orders/{quote(str(order_id), safe='')}",
+        )
+        params = {"fields": fields if fields is not None else self._config.order_fields}
+
+        print(f"URL: {url}")
+
+        resp = self._client.get(url, params=params, headers=self._headers(destination))
+        if resp.is_error:
+            self._raise_order_error(resp, email, order_id=order_id)
+        return resp.json()
+
+    def _raise_order_error(
+        self, resp: httpx.Response, email: str, *, order_id: str | None = None
+    ) -> None:
+        """Surface OCC's real error body (not just the status code) — for a
+        CS-agent-facing call, "not authorized for this customer" vs "no such
+        customer/order" vs "something else broke" are meaningfully different,
+        so this deliberately reads resp.text instead of using raise_for_status()."""
+        if resp.status_code == 403:
+            raise RuntimeError(
+                f"Not authorized to view orders for customer '{email}' (OCC 403): {resp.text}"
+            )
+        if resp.status_code == 404:
+            if order_id is not None:
+                raise RuntimeError(
+                    f"No order '{order_id}' found for customer '{email}' (OCC 404): {resp.text}"
+                )
+            raise RuntimeError(f"No customer found for email '{email}' (OCC 404): {resp.text}")
+        raise RuntimeError(
+            f"OCC order request failed for '{email}' ({resp.status_code}): {resp.text}"
+        )

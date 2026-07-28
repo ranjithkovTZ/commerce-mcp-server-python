@@ -171,7 +171,7 @@ BACKEND_MODE=mock
 
 2. Run the MCP Inspector using one of the commands from [Running the MCP Inspector](#running-the-mcp-inspector) above.
 
-3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`, `get_product_details`, `get_product_stock`) return mock data immediately.
+3. This opens the MCP Inspector in your browser. All tools (`get_products`, `get_categories`, `get_products_by_category`, `get_retailers`, `get_product_details`, `get_product_stock`, `get_customer_orders`, `get_order_details`) return mock data immediately.
 
 #### Option 2: Live Backend (BTP required)
 
@@ -216,7 +216,19 @@ The OAuth token endpoint is always derived as `{OCC_BASE_URL}/authorizationserve
 
 4. This opens the MCP Inspector in your browser. `get_products` and `get_products_by_category` call OCC's `products/search` endpoint. `get_product_details` calls OCC's `products/{productCode}` endpoint (field selector defaults to `FULL`, overridable per-call via the tool's `fields` argument) — this already includes a static `stock` field. `get_product_stock` is a separate tool that calls OCC's OOTB `productAvailabilities` endpoint (`/productAvailabilities?filters={productCode}:{unitCode}`, with the unit code resolved from the product's `sapUnit`) for real-time stock/availability, distinct from the static `stock` field embedded in `get_product_details`. **`get_categories` and `get_retailers` are not supported in OCC mode** — they return `{"status": "error", "message": "...not supported in OCC mode..."}`, since stock OCC has no equivalent to the custom CAP OData service's flat categories list / retailers (BusinessPartners) concepts.
 
-4. If a required `OCC_*` environment variable (or `WEBSITE_URL`) is missing or empty, the server fails fast at startup with a `RuntimeError` naming the exact missing variable.
+5. `get_customer_orders` calls OCC's OOTB `GET /users/{userId}/orders` endpoint, using the customer's email directly as `{userId}` — this assumes this tenant's standard OOTB B2C convention that a customer's OCC user ID equals their email address; if this tenant customizes login/uid, this tool will not resolve the right customer. **Unlike every other tool on this page**, this call authenticates as the **CS agent's own OCC bearer token**, not this server's client_credentials service token — the agent obtains that token by logging into Commerce's own hosted OAuth login page through a real browser popup when their Claude Desktop connects to this server (see below), never by typing a password into chat. If no authenticated agent session is present for the request, the tool fails immediately with a clear error. OCC's own authorization decides whether that specific agent is allowed to see a given customer's orders — a 403 is surfaced as-is (with OCC's real error text), not second-guessed client-side. Supports `fields`/`page_size`/`current_page`/`sort` overrides (all optional; defaults to `FULL` fields, page size 12).
+
+6. `get_order_details` calls OCC's OOTB `GET /users/{userId}/orders/{code}` endpoint — same `email`-as-`{userId}` assumption, same CS-agent-bearer-token authentication, and the same "trust OCC's own 403" model as `get_customer_orders` above. Takes `email` and `order_id` (both required) plus an optional `fields` override (defaults to `FULL`).
+
+7. **Enabling `get_customer_orders`/`get_order_details` requires a bit more setup than the other OCC tools**, since both add a real per-agent login flow on top of the existing anonymous client_credentials setup above:
+   - Set `MCP_PUBLIC_BASE_URL` in `.env` to this server's own reachable base URL — during local development that's `http://localhost:<PORT>` (matching whatever `PORT` you run the server on); it becomes a real HTTPS URL once actually deployed for CS agents to share.
+   - Set `MCP_ALLOWED_CLIENT_REDIRECT_URIS` to the redirect URI pattern your MCP client (e.g. Claude Desktop) uses when completing its OAuth login — confirm the current pattern before deploying; don't leave it unset in a real deployment.
+   - Leave `OCC_SUPPORTS_PKCE=false` unless you've confirmed your Commerce tenant's `authorizationserver` supports PKCE on `/authorizationserver/oauth/authorize`.
+   - Re-import `resources/create_mcp_oauth_client.impex` after updating `$redirectUri` in that file to match `MCP_PUBLIC_BASE_URL` + `/occ/auth/callback` exactly — a mismatch is a common `redirect_uri_mismatch` failure.
+   - This reuses the same `mcp-commerce-client` OAuth client already used for the anonymous product-browsing tools (it's already registered with the `authorization_code` grant) — no second OAuth client is needed.
+   - **Remote MCP clients require an actual HTTPS URL** — Claude Desktop's config file only supports local stdio-launched servers; adding a remote/OAuth-requiring server must be done via its in-app **Settings → Connectors → Add custom connector** UI, pointed at a real HTTPS URL (a tunnel like `cloudflared`/`ngrok` works for local testing).
+
+8. If a required `OCC_*` environment variable (or `WEBSITE_URL`) is missing or empty, the server fails fast at startup with a `RuntimeError` naming the exact missing variable.
 
 ### How to debug the code on local
 
@@ -363,3 +375,28 @@ curl -sS -X POST "$MCP_URL" \
   -H "Mcp-Session-Id: $SID" \
   -d "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"get_product_stock\",\"arguments\":{\"product_code\":\"$PRODUCT_CODE\"}}}"
 ```
+
+### Debugging `get_customer_orders` / `get_order_details` (OCC mode only — different auth, not a curl-only flow)
+
+Every curl recipe above authenticates with one bearer token (`MCP_XSUAA_TOKEN`) that does double duty: it both reaches the MCP endpoint and implicitly stands in as "identity." These two tools split that into two separate tokens, and only one of them can be fabricated with a plain curl+client_credentials recipe:
+
+- **Transport-level token** — in OCC mode this server is protected by `mcp.auth` (an `OccOAuthProxy`, a thin `OAuthProxy` subclass — see `src/occ/occ_oauth_proxy.py`), not `XSUAAAuthMiddleware`, so there is no `MCP_XSUAA_TOKEN` step at all here; the token accepted at `/mcp` is whatever the proxy issues after a real login (see below).
+- **Agent identity** — the tool internally calls `fastmcp.server.dependencies.get_access_token()` to retrieve the *real* OCC access token for whichever CS agent is currently logged in, and forwards that to OCC. This token can only be obtained by completing an actual browser-based login — there is no client_credentials shortcut for it, by design (this is exactly what prevents an agent's password from ever appearing in chat or a curl command).
+
+**Confirmed working end-to-end (2026-07-28) via Claude Desktop + a `cloudflared` quick tunnel.** Two things learned the hard way, worth knowing before you try this yourself:
+- **`claude_desktop_config.json` cannot represent a remote/HTTP server at all** — a `"type": "http"`/`"url"` entry there is silently invalid (that shape is for Claude *Code*, not Desktop) and produces a "not a valid MCP server config" error. Desktop's config file only supports local stdio (`command`/`args`) servers. To test this flow, add the server via Desktop's **Settings → Connectors → Add custom connector** UI instead, pointing at a real HTTPS URL.
+- **Never put `PORT`/`MCP_PUBLIC_BASE_URL` in the shared `.env`** if you also have a stdio-launched entry in `claude_desktop_config.json` pointed at this same repo — that entry reads the same `.env` file, so setting `PORT` there flips Desktop's own stdio subprocess into HTTP mode too, breaking it (and racing for the same port). Pass `PORT`/`MCP_PUBLIC_BASE_URL` as one-off shell environment variables on the command line instead, only for the process you're using to test the HTTP/OAuth flow.
+- OCC's `authorizationserver` rejects the `resource` query parameter (RFC 8707) that MCP clients include on `/authorize` with `invalid_request: Not supported parameter: resource` — this is why `mcp.auth` is `OccOAuthProxy`, not the bare `OAuthProxy`; it strips that one parameter before forwarding to OCC.
+
+To exercise this locally:
+
+1. Run the server locally in OCC mode with `PORT` set and `MCP_PUBLIC_BASE_URL` set to a real HTTPS URL (a `cloudflared tunnel --url http://localhost:<PORT>` quick tunnel works well for this — no account needed), both passed as shell env vars, e.g. `PORT=8000 MCP_PUBLIC_BASE_URL=https://<your-tunnel>.trycloudflare.com .venv/Scripts/python.exe src/server.py` (see [Option 3: OCC Backend](#option-3-occ-backend--sap-commerce-cloud-native-api-no-btp-required) above for the rest of the `.env` setup).
+2. Update `$redirectUri` in `resources/create_mcp_oauth_client.impex` to `<MCP_PUBLIC_BASE_URL>/occ/auth/callback` and re-import it via HAC.
+3. In Claude Desktop, go to **Settings → Connectors → Add custom connector** and enter `<MCP_PUBLIC_BASE_URL>/mcp`. This triggers a browser popup to OCC's real hosted login page — log in with a real CS-agent employee account (one that's been granted the appropriate customer-support/agent authority in Commerce; without it, calls will succeed all the way through but OCC itself will return a 403).
+4. Once connected, call the tools through that same authenticated session:
+
+```json
+{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"get_customer_orders","arguments":{"email":"jane.doe@example.com"}}}
+{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"get_order_details","arguments":{"email":"jane.doe@example.com","order_id":"00001234"}}}
+```
+There's no separate curl recipe to paste for these two — the whole point is that the token backing the call never exists outside that browser-authenticated session.
