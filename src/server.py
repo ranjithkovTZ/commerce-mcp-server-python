@@ -53,7 +53,14 @@ elif BACKEND_MODE == BackendMode.OCC:
         from occ.occ_oauth_proxy import OccOAuthProxy
 
         _occ_creds = load_occ_commerce_credentials()
-        _mcp_public_base_url = os.environ["MCP_PUBLIC_BASE_URL"]
+        _mcp_public_base_url = os.getenv("MCP_PUBLIC_BASE_URL", "").strip()
+        if not _mcp_public_base_url:
+            raise RuntimeError(
+                "MCP_PUBLIC_BASE_URL is empty. When PORT is set in OCC mode, set it to this "
+                "server's public base URL (e.g. your trycloudflare.com tunnel URL, or "
+                "http://localhost:<PORT>) — it must match the impex $redirectUri minus "
+                "'/occ/auth/callback'."
+            )
         _allowed_redirect_uris = os.getenv("MCP_ALLOWED_CLIENT_REDIRECT_URIS", "").split(",") or None
         _allowed_redirect_uris = [u for u in (_allowed_redirect_uris or []) if u] or None
 
