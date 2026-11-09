@@ -50,3 +50,19 @@ class MockCommerceApi:
         data = _load("get_business_partners.json")
         filtered = [bp for bp in data.get("value", []) if bp.get("type") == "RETAILER"]
         return {"@odata.context": "$metadata#BusinessPartners", "value": filtered}
+
+    def get_customer_orders(self, destination=None, email: str = "") -> dict:
+        """Return a single customer's order history looked up by email."""
+        data = _load("get_customer_orders_response.json")
+        orders = data.get(email)
+        if orders is None:
+            raise ValueError(f"No orders found for email '{email}'.")
+        return orders
+
+    def get_order_details(self, destination=None, email: str = "", order_id: str = "") -> dict:
+        """Return a single order's full details looked up by email and order_id."""
+        data = _load("get_order_details_response.json")
+        order = data.get(email, {}).get(order_id)
+        if order is None:
+            raise ValueError(f"No order '{order_id}' found for email '{email}'.")
+        return order
